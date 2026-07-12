@@ -1,48 +1,73 @@
 package dev.kafka.kafkautils.module.modules.combat;
 
-import dev.kafka.kafkautils.module.Category;
-import dev.kafka.kafkautils.module.HudModule;
 import dev.kafka.kafkautils.module.Module;
-import dev.kafka.kafkautils.util.RenderUtil;
-import java.util.ArrayList;
-import java.util.List;
-import net.minecraft.class_332;
+import dev.kafka.kafkautils.setting.Setting;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.entity.player.PlayerEntity;
+import java.util.*;
 
-public class KillDeathTracker extends Module implements HudModule {
-   private int kills = 0;
-   private int deaths = 0;
-   private int killStreak = 0;
-   private int bestStreak = 0;
-   private boolean justDied = false;
+public class KillDeathTracker extends Module {
+    public Setting<Boolean> resetOnWorldChange = this.register(new Setting<>("Reset On World Change", false));
+    public Setting<Boolean> showDeathMessages = this.register(new Setting<>("Show Death Messages", true));
 
-   public KillDeathTracker() {
-      super("K/D Tracker", "Tracks kills and deaths in your current session.", Category.COMBAT);
-   }
+    private static final int KAFKA_PURPLE = 0xFF9D4EDD;
 
-   public void recordKill(String name) {
-      this.kills++;
-      this.killStreak++;
-      if (this.killStreak > this.bestStreak) {
-         this.bestStreak = this.killStreak;
-      }
-   }
+    private int kills = 0;
+    private int deaths = 0;
+    private Map<String, Integer> playerKills = new HashMap<>();
+    private String lastWorld = "";
 
-   public void recordDeath(String killer) {
-      this.deaths++;
-      this.killStreak = 0;
-      this.justDied = true;
-   }
+    public KillDeathTracker() {
+        super("Kill/Death Tracker", KAFKA_PURPLE);
+    }
 
-   public int[] onHudRender(class_332 ctx, int x, int y) {
-      List<String> lines = new ArrayList();
-      double kd = this.deaths > 0 ? (double)this.kills / (double)this.deaths : (double)this.kills;
-      String kdStr = this.kills + "/" + this.deaths + " §7(§" + (kd >= 1.0 ? "a" : "c") + String.format("%.2f", kd) + "§7)";
-      lines.add("§dK/D: §r" + kdStr);
-      lines.add("§dStreak: §r" + this.killStreak + " §7(best: " + this.bestStreak + ")");
-      if (this.justDied) {
-         lines.add("§c☠ Death!");
-         this.justDied = false;
-      }
-      return RenderUtil.panel(ctx, x, y, "Session Stats", lines);
-   }
+    @Override
+    public void tick() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.world == null || mc.player == null) return;
+
+        String currentWorld = mc.world.getDimension().toString();
+        if (!lastWorld.equals(currentWorld) && resetOnWorldChange.getValue()) {
+            resetStats();
+            lastWorld = currentWorld;
+        }
+    }
+
+    public void recordKill(PlayerEntity victim) {
+        kills++;
+        playerKills.put(victim.getName().getString(), 
+            playerKills.getOrDefault(victim.getName().getString(), 0) + 1);
+    }
+
+    public void recordDeath(PlayerEntity killer) {
+        deaths++;
+    }
+
+    public int getKills() {
+        return kills;
+    }
+
+    public int getDeaths() {
+        return deaths;
+    }
+
+    public double getKdr() {
+        if (deaths == 0) return kills > 0 ? kills : 0;
+        return (double) kills / deaths;
+    }
+
+    public Map<String, Integer> getPlayerKills() {
+        return new HashMap<>(playerKills);
+    }
+
+    public void resetStats() {
+        kills = 0;
+        deaths = 0;
+        playerKills.clear();
+    }
+
+    @Override
+    public String getInfo() {
+        return String.format("K:%d D:%d KDR:%.2f", kills, deaths, getKdr());
+    }
 }

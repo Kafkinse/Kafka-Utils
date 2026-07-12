@@ -1,129 +1,114 @@
 package dev.kafka.kafkautils.module.modules.combat;
 
-import dev.kafka.kafkautils.module.Category;
-import dev.kafka.kafkautils.module.HudModule;
 import dev.kafka.kafkautils.module.Module;
-import dev.kafka.kafkautils.util.RenderUtil;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.UUID;
-import net.minecraft.class_332;
-import net.minecraft.class_742;
+import dev.kafka.kafkautils.setting.Setting;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import java.util.*;
 
-public class DpsMeter extends Module implements HudModule {
-   private final LinkedHashMap<UUID, DamageEntry> tracking = new LinkedHashMap();
-   private float lastHp = -1.0F;
-   private String lastAttacker = null;
+public class DpsMeter extends Module {
+    public Setting<Boolean> trackAllPlayers = this.register(new Setting<>("Track All Players", true));
+    public Setting<Integer> trackingWindow = this.register(new Setting<>("Window (seconds)", 10, 5, 30));
+    public Setting<Integer> renderDistance = this.register(new Setting<>("Render Distance", 50, 10, 100));
 
-   public DpsMeter() {
-      super("DPS Meter", "Measures damage per second dealt to enemies.", Category.COMBAT);
-   }
+    private static final int KAFKA_PURPLE = 0xFF9D4EDD;
 
-   protected void onEnable() {
-      this.tracking.clear();
-      this.lastHp = -1.0F;
-      this.lastAttacker = null;
-   }
+    private static class DamageRecord {
+        float damage;
+        long timestamp;
 
-   public void onTick() {
-      if (mc.field_1687 != null && mc.field_1724 != null) {
-         long now = System.currentTimeMillis();
-         float hp = mc.field_1724.method_6032();
+        DamageRecord(float dmg, long time) {
+            this.damage = dmg;
+            this.timestamp = time;
+        }
+    }
 
-         if (this.lastHp >= 0.0F && hp < this.lastHp - 0.05F) {
-            float dmg = this.lastHp - hp;
-            class_742 near = this.nearestPlayer(12.0);
-            String name;
-            if (near != null) {
-               name = near.method_5477().getString();
-            } else {
-               name = "?";
+    private Map<String, List<DamageRecord>> playerDamage = new HashMap<>();
+    private LivingEntity trackedTarget = null;
+
+    public DpsMeter() {
+        super("DPS Meter", KAFKA_PURPLE);
+    }
+
+    @Override
+    public void tick() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.world == null || mc.player == null) return;
+
+        // Find nearest enemy as target
+        if (trackedTarget == null || trackedTarget.isDead()) {
+            findNearestTarget(mc);
+        }
+
+        // Clean up old records
+        cleanupOldRecords();
+    }
+
+    private void findNearestTarget(MinecraftClient mc) {
+        double minDistance = renderDistance.getValue();
+        LivingEntity closest = null;
+
+        for (LivingEntity entity : mc.world.getEntities().stream()
+                .filter(e -> e instanceof LivingEntity && e != mc.player)
+                .map(e -> (LivingEntity) e)
+                .toList()) {
+            double distance = mc.player.distanceTo(entity);
+            if (distance < minDistance) {
+                minDistance = distance;
+                closest = entity;
             }
-            this.lastAttacker = name;
+        }
+        trackedTarget = closest;
+    }
 
-            DamageEntry entry = this.tracking.get(name);
-            if (entry == null) {
-               entry = new DamageEntry();
-               this.tracking.put(name, entry);
-               if (this.tracking.size() > 10) {
-                  Iterator<Map.Entry<UUID, DamageEntry>> it = this.tracking.entrySet().iterator();
-                  it.next();
-                  it.remove();
-               }
-            }
-            entry.addHit(dmg, now);
-         }
-         this.lastHp = hp;
+    public void recordDamage(PlayerEntity dealer, LivingEntity target, float damage) {
+        if (!trackAllPlayers.getValue() && target != trackedTarget) return;
 
-         // Cleanup old entries
-         this.tracking.values().removeIf(e -> now - e.lastHit > 5000L);
-      }
-   }
+        String playerName = dealer.getName().getString();
+        playerDamage.computeIfAbsent(playerName, k -> new ArrayList<>())
+                .add(new DamageRecord(damage, System.currentTimeMillis()));
+    }
 
-   public int[] onHudRender(class_332 ctx, int x, int y) {
-      long now = System.currentTimeMillis();
-      List<String> lines = new ArrayList();
+    public float getDps(String playerName) {
+        if (!playerDamage.containsKey(playerName)) return 0;
 
-      if (this.tracking.isEmpty()) {
-         lines.add("§7—");
-      } else {
-         for (Map.Entry<String, DamageEntry> e : this.tracking.entrySet()) {
-            String name = e.getKey();
-            DamageEntry de = e.getValue();
-            double dps = de.getDps(now);
-            String marker = name.equals(this.lastAttacker) ? " §c◄" : "";
-            lines.add(String.format(Locale.ROOT, "§d%s§r: §c%.1f%s", name, dps, marker));
-         }
-      }
+        List<DamageRecord> records = playerDamage.get(playerName);
+        long now = System.currentTimeMillis();
+        long windowMs = trackingWindow.getValue() * 1000L;
 
-      return RenderUtil.panel(ctx, x, y, "DPS Meter", lines);
-   }
+        float totalDamage = records.stream()
+                .filter(r -> now - r.timestamp <= windowMs)
+                .map(r -> r.damage)
+                .reduce(0f, Float::sum);
 
-   private class_742 nearestPlayer(double maxDist) {
-      if (mc.field_1687 != null && mc.field_1724 != null) {
-         class_742 best = null;
-         double bestSq = maxDist * maxDist;
+        return totalDamage / trackingWindow.getValue();
+    }
 
-         for(class_742 p : mc.field_1687.method_18456()) {
-            if (p != mc.field_1724) {
-               double sq = mc.field_1724.method_5858(p);
-               if (sq < bestSq) {
-                  bestSq = sq;
-                  best = p;
-               }
-            }
-         }
-         return best;
-      }
-      return null;
-   }
+    public float getDps(LivingEntity entity) {
+        if (entity instanceof PlayerEntity) {
+            return getDps(((PlayerEntity) entity).getName().getString());
+        }
+        return 0;
+    }
 
-   private static class DamageEntry {
-      private final List<Hit> hits = new ArrayList();
-      long lastHit;
+    private void cleanupOldRecords() {
+        long now = System.currentTimeMillis();
+        long windowMs = trackingWindow.getValue() * 1000L;
 
-      void addHit(float dmg, long time) {
-         this.hits.add(new Hit(dmg, time));
-         this.lastHit = time;
-         // Keep only last 5 seconds
-         this.hits.removeIf(h -> time - h.time > 5000L);
-      }
+        playerDamage.forEach((player, records) -> {
+            records.removeIf(r -> now - r.timestamp > windowMs);
+        });
 
-      double getDps(long now) {
-         this.hits.removeIf(h -> now - h.time > 5000L);
-         if (this.hits.isEmpty()) return 0.0;
-         long first = this.hits.get(0).time;
-         double span = (double)(now - first) / 1000.0;
-         if (span < 0.01) return 0.0;
-         double total = 0.0;
-         for (Hit h : this.hits) total += h.dmg;
-         return total / span;
-      }
+        playerDamage.entrySet().removeIf(e -> e.getValue().isEmpty());
+    }
 
-      private record Hit(float dmg, long time) {}
-   }
+    @Override
+    public String getInfo() {
+        if (trackedTarget instanceof PlayerEntity) {
+            float dps = getDps((PlayerEntity) trackedTarget);
+            return String.format("%.1f DPS", dps);
+        }
+        return "No Target";
+    }
 }

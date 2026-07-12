@@ -1,144 +1,108 @@
 package dev.kafka.kafkautils.module.modules.combat;
 
-import dev.kafka.kafkautils.module.Category;
-import dev.kafka.kafkautils.module.HudModule;
 import dev.kafka.kafkautils.module.Module;
-import dev.kafka.kafkautils.setting.BooleanSetting;
-import dev.kafka.kafkautils.setting.ListSetting;
-import dev.kafka.kafkautils.util.ChatUtil;
-import dev.kafka.kafkautils.util.RenderUtil;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import net.minecraft.class_1799;
-import net.minecraft.class_332;
+import dev.kafka.kafkautils.setting.Setting;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.inventory.Inventory;
+import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NbtCompound;
+import java.util.*;
 
-public class InventorySorter extends Module implements HudModule {
-   private final BooleanSetting showSlots = (BooleanSetting)this.add(new BooleanSetting("Show Missing Items", true));
-   private final ListSetting presetNames = (ListSetting)this.add(new ListSetting("Presets"));
+public class InventorySorter extends Module {
+    public Setting<Boolean> enablePresets = this.register(new Setting<>("Enable Presets", true));
+    public Setting<Boolean> showMissingItems = this.register(new Setting<>("Show Missing Items", true));
+    public Setting<Integer> presetSlot = this.register(new Setting<>("Preset Slot", 1, 1, 9));
 
-   private final Map<String, List<class_1799>> presets = new LinkedHashMap();
-   private final Map<String, List<String>> missingItems = new HashMap();
-   private String activePreset = null;
-   private boolean isSaving = false;
+    private static final int KAFKA_PURPLE = 0xFF9D4EDD;
 
-   public InventorySorter() {
-      super("Inventory Sorter", "Save and load inventory presets.", Category.COMBAT);
-   }
+    private static class InventoryPreset {
+        String name;
+        Map<Integer, ItemStack> preset = new HashMap<>();
+        long createdTime;
 
-   protected void onEnable() {
-      this.loadPresets();
-   }
+        InventoryPreset(String name) {
+            this.name = name;
+            this.createdTime = System.currentTimeMillis();
+        }
+    }
 
-   public void onTick() {
-      if (mc.field_1724 == null) return;
+    private Map<String, InventoryPreset> presets = new LinkedHashMap<>();
+    private String activePreset = null;
+    private List<ItemStack> missingItems = new ArrayList<>();
 
-      // Check if inventory is open (F key or container screen)
-      if (mc.field_1755 != null && mc.field_1755 instanceof net.minecraft.class_1703) {
-         // Check for our buttons in the GUI
-         this.showSaveLoadButtons();
-      }
-   }
+    public InventorySorter() {
+        super("Inventory Sort", KAFKA_PURPLE);
+    }
 
-   public void savePreset(String name) {
-      if (mc.field_1724 == null) return;
-      List<class_1799> items = new ArrayList();
-      // Save hotbar and inventory
-      net.minecraft.class_1661 inv = mc.field_1724.method_7371();
-      for (int i = 0; i < 36; i++) {
-         items.add(inv.method_5438(i).method_7938());
-      }
-      this.presets.put(name, items);
-      ChatUtil.info("§aPreset saved: §d" + name);
-   }
+    @Override
+    public void tick() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.player == null) return;
 
-   public void loadPreset(String name) {
-      if (mc.field_1724 == null) return;
-      List<class_1799> items = this.presets.get(name);
-      if (items == null) {
-         ChatUtil.info("§cPreset not found: §d" + name);
-         return;
-      }
+        if (activePreset != null && showMissingItems.getValue()) {
+            checkMissingItems(mc.player);
+        }
+    }
 
-      net.minecraft.class_1661 inv = mc.field_1724.method_7371();
-      List<String> missing = new ArrayList();
-      this.activePreset = name;
+    public void savePreset(String name, PlayerEntity player) {
+        if (!enablePresets.getValue()) return;
 
-      // Try to find and move items to correct slots
-      for (int i = 0; i < Math.min(items.size(), 36); i++) {
-         class_1799 desired = (class_1799)items.get(i);
-         if (desired.method_7960()) continue;
+        InventoryPreset preset = new InventoryPreset(name);
+        Inventory inventory = player.getInventory();
 
-         String itemName = desired.method_7909().method_63680().getString();
-         class_1799 current = inv.method_5438(i);
-
-         // Check if correct item is already in this slot
-         if (!current.method_7960() && current.method_7909() == desired.method_7909()) {
-            continue;
-         }
-
-         // Find the item in the inventory
-         int foundSlot = -1;
-         for (int j = 0; j < 36; j++) {
-            class_1799 stack = inv.method_5438(j);
-            if (!stack.method_7960() && stack.method_7909() == desired.method_7909()) {
-               foundSlot = j;
-               break;
+        // Save hotbar
+        for (int i = 0; i < 9; i++) {
+            ItemStack stack = inventory.getStack(i);
+            if (!stack.isEmpty()) {
+                preset.preset.put(i, stack.copy());
             }
-         }
+        }
 
-         if (foundSlot == -1) {
-            // Item not found in inventory
-            if (!missing.contains(itemName)) {
-               missing.add(itemName);
+        presets.put(name, preset);
+    }
+
+    public void loadPreset(String name, PlayerEntity player) {
+        if (!presets.containsKey(name)) return;
+
+        InventoryPreset preset = presets.get(name);
+        Inventory inventory = player.getInventory();
+        activePreset = name;
+
+        // This would be implemented with packet sending
+        // to avoid cheating detection
+    }
+
+    private void checkMissingItems(PlayerEntity player) {
+        if (activePreset == null || !presets.containsKey(activePreset)) return;
+
+        missingItems.clear();
+        InventoryPreset preset = presets.get(activePreset);
+        Inventory inventory = player.getInventory();
+
+        for (Map.Entry<Integer, ItemStack> entry : preset.preset.entrySet()) {
+            ItemStack presetItem = entry.getValue();
+            ItemStack actualItem = inventory.getStack(entry.getKey());
+
+            if (!ItemStack.canCombine(presetItem, actualItem) || actualItem.getCount() < presetItem.getCount()) {
+                missingItems.add(presetItem);
             }
-         }
-      }
+        }
+    }
 
-      this.missingItems.put(name, missing);
-      if (missing.isEmpty()) {
-         ChatUtil.info("§aPreset loaded: §d" + name);
-      } else {
-         ChatUtil.info("§ePreset loaded: §d" + name + " §7(missing " + missing.size() + " items)");
-      }
-   }
+    public List<ItemStack> getMissingItems() {
+        return new ArrayList<>(missingItems);
+    }
 
-   public void deletePreset(String name) {
-      this.presets.remove(name);
-      ChatUtil.info("§cDeleted preset: §d" + name);
-   }
+    public Map<String, InventoryPreset> getPresets() {
+        return new HashMap<>(presets);
+    }
 
-   public int[] onHudRender(class_332 ctx, int x, int y) {
-      List<String> lines = new ArrayList();
-
-      if (this.activePreset != null) {
-         lines.add("§dActive: §r" + this.activePreset);
-         List<String> missing = this.missingItems.get(this.activePreset);
-         if (missing != null && !missing.isEmpty()) {
-            lines.add("§7Missing: §c" + String.join("§7, §c", missing));
-         }
-      } else {
-         lines.add("§7no preset active");
-      }
-
-      return RenderUtil.panel(ctx, x, y, "Inventory Sorter", lines);
-   }
-
-   // Show save/load buttons when inventory is open (simplified - buttons will show in clickgui)
-   private void showSaveLoadButtons() {
-      // Placeholder for GUI integration
-   }
-
-   private void loadPresets() {
-      // Presets are loaded from ListSetting entries
-      List<String> names = this.presetNames.values();
-      for (String name : names) {
-         if (!this.presets.containsKey(name)) {
-            this.presets.put(name, new ArrayList());
-         }
-      }
-   }
+    @Override
+    public String getInfo() {
+        if (activePreset != null) {
+            return activePreset + " [" + missingItems.size() + " missing]";
+        }
+        return "Presets: " + presets.size();
+    }
 }
