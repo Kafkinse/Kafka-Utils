@@ -8,7 +8,7 @@ import dev.kafka.kafkautils.module.ModuleManager;
 import dev.kafka.kafkautils.module.WorldRenderModule;
 import dev.kafka.kafkautils.module.modules.chat.AntiSpam;
 import dev.kafka.kafkautils.module.modules.chat.ChatPing;
-import java.io.PrintStream;
+import dev.kafka.kafkautils.util.Render3D;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
@@ -16,7 +16,6 @@ import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
-import net.minecraft.class_12180;
 import net.minecraft.class_304;
 import net.minecraft.class_310;
 import net.minecraft.class_3675;
@@ -62,44 +61,23 @@ public class KafkaUtilsClient implements ClientModInitializer {
       });
       WorldRenderEvents.BEFORE_DEBUG_RENDER.register((WorldRenderEvents.DebugRender)(context) -> {
          class_310 client = class_310.method_1551();
-         if (client.field_1769 != null) {
+         if (client.field_1687 != null && client.field_1724 != null) {
+            Render3D.begin(context);
+
             try {
-               class_12180.class_12181 scope = client.field_1769.method_75414();
-
-               try {
-                  for(Module m : ModuleManager.getModules()) {
-                     if (m.isEnabled() && m instanceof WorldRenderModule) {
-                        WorldRenderModule wrm = (WorldRenderModule)m;
-
-                        try {
-                           wrm.onWorldRender(context);
-                        } catch (Throwable t) {
-                           m.setEnabled(false);
-                           PrintStream var10000 = System.err;
-                           String var10001 = m.getName();
-                           var10000.println("[KafkaUtils] Disabled '" + var10001 + "' after a render error: " + String.valueOf(t));
-                        }
-                     }
-                  }
-               } catch (Throwable var9) {
-                  if (scope != null) {
+               for(Module m : ModuleManager.getModules()) {
+                  if (m.isEnabled() && m instanceof WorldRenderModule wrm) {
                      try {
-                        scope.close();
-                     } catch (Throwable var7) {
-                        var9.addSuppressed(var7);
+                        wrm.onWorldRender(context);
+                     } catch (Throwable t) {
+                        m.setEnabled(false);
+                        System.err.println("[KafkaUtils] Disabled '" + m.getName() + "' after a render error: " + String.valueOf(t));
                      }
                   }
-
-                  throw var9;
                }
-
-               if (scope != null) {
-                  scope.close();
-               }
-            } catch (Throwable t) {
-               System.err.println("[KafkaUtils] gizmo scope error: " + String.valueOf(t));
+            } finally {
+               Render3D.end();
             }
-
          }
       });
       HudRenderCallback.EVENT.register((HudRenderCallback)(context, tickCounter) -> HudManager.render(context));

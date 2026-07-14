@@ -21,7 +21,7 @@ public class HealthESP extends Module implements WorldRenderModule {
          for(class_742 p : mc.field_1687.method_18456()) {
             if (p != mc.field_1724) {
                float maxHp = p.method_6063();
-               if (!(maxHp <= 0.0F)) continue;
+               if (maxHp <= 0.0F) continue;
 
                float hpFrac = Math.max(0.0F, Math.min(1.0F, p.method_6032() / maxHp));
                class_243 pos = p.method_73189();
