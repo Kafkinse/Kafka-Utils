@@ -16,7 +16,7 @@ public class CoordinateShare extends Module {
    private final BooleanSetting includeDimension = this.add(new BooleanSetting("Include Dimension", true));
 
    public CoordinateShare() {
-      super("Coordinate Share", "Sends your coordinates to chat on a keybind (see Controls).", Category.CLAN);
+      super("Coordinate Share", "Sends your coordinates to chat on a keybind (see Controls).", Category.FRIENDS);
    }
 
    /** Called from the client keybind handler when the share key is pressed. */

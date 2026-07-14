@@ -1,6 +1,5 @@
 {
   "key.kafkautils.open_gui": "Open Kafka Utils Menu",
   "key.kafkautils.hide_hud": "Toggle Kafka Utils HUD",
-  "key.kafkautils.share_coords": "Share Coordinates (Kafka Utils)",
-  "key.kafkautils.sort": "Sort Inventory / Container (Kafka Utils)"
+  "key.kafkautils.share_coords": "Share Coordinates (Kafka Utils)"
 }

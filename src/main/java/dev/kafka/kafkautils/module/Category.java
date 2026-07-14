@@ -1,10 +1,10 @@
 package dev.kafka.kafkautils.module;
 
 public enum Category {
-   COMBAT("Combat & Raids"),
+   COMBAT("Combat"),
    RENDER("Render & World"),
    CHAT("Chat & Monitoring"),
-   CLAN("Clan"),
+   FRIENDS("Friends"),
    FARMING("Farming");
 
    private final String title;
@@ -19,6 +19,6 @@ public enum Category {
 
    // $FF: synthetic method
    private static Category[] $values() {
-      return new Category[]{COMBAT, RENDER, CHAT, CLAN, FARMING};
+      return new Category[]{COMBAT, RENDER, CHAT, FRIENDS, FARMING};
    }
 }
