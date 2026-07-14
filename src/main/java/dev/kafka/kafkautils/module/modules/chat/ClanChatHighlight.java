@@ -18,7 +18,7 @@ public class ClanChatHighlight extends Module {
    private final BooleanSetting sound = this.add(new BooleanSetting("Sound", true));
 
    public ClanChatHighlight() {
-      super("Clan Chat Highlight", "Colours chat lines that mention a clan member.", Category.CHAT);
+      super("Clan Chat Highlight", "Colours chat lines that mention a clan member.", Category.CLAN);
    }
 
    public class_2561 process(class_2561 message) {

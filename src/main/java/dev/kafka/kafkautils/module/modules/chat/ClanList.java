@@ -22,7 +22,7 @@ public class ClanList extends Module implements HudModule {
    private final StringSetting nicks = this.add(new StringSetting("Members", ""));
 
    public ClanList() {
-      super("Clan List", "Clan roster (comma/space separated) used by the other clan modules.", Category.CHAT);
+      super("Clan List", "Clan roster (comma/space separated) used by the other clan modules.", Category.CLAN);
    }
 
    /** @return all configured member names, lower-cased. */

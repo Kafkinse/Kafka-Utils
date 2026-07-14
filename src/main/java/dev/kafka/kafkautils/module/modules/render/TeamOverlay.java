@@ -20,7 +20,7 @@ import net.minecraft.class_742;
  */
 public class TeamOverlay extends Module implements HudModule {
    public TeamOverlay() {
-      super("Team Overlay", "Shows clan members' HP, armour and distance in a panel.", Category.RENDER);
+      super("Team Overlay", "Shows clan members' HP, armour and distance in a panel.", Category.CLAN);
    }
 
    public int[] onHudRender(class_332 ctx, int x, int y) {
