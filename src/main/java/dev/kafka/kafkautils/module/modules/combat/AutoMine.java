@@ -61,7 +61,7 @@ public class AutoMine extends Module implements HudModule {
    private int delayTicks;
 
    public AutoMine() {
-      super("Auto Mine", "Places/breaks ores in a loop for fast Fortune farming.", Category.COMBAT);
+      super("Auto Mine", "Places/breaks ores in a loop for fast Fortune farming.", Category.FARMING);
    }
 
    protected void onEnable() {

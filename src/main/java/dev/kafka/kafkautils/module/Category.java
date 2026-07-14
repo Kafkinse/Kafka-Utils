@@ -4,7 +4,8 @@ public enum Category {
    COMBAT("Combat & Raids"),
    RENDER("Render & World"),
    CHAT("Chat & Monitoring"),
-   CLAN("Clan");
+   CLAN("Clan"),
+   FARMING("Farming");
 
    private final String title;
 
@@ -18,6 +19,6 @@ public enum Category {
 
    // $FF: synthetic method
    private static Category[] $values() {
-      return new Category[]{COMBAT, RENDER, CHAT, CLAN};
+      return new Category[]{COMBAT, RENDER, CHAT, CLAN, FARMING};
    }
 }
