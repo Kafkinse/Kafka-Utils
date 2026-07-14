@@ -28,15 +28,14 @@ import net.minecraft.class_7923;
  * Auto-trades with villagers/wandering traders (inspired by sebseb7's
  * autotrade-fabric).
  *
- * <p>Behaviour: while a merchant screen is open it repeatedly executes the trade
- * matching your Action + Items filter. It does NOT force the screen open by
- * default — you open the villager, it farms, and you can close it any time. With
- * Auto Open on it will reach for the nearest merchant, but only when no screen is
- * open and after a short grace period once a merchant closes, so you can always
- * walk away.
+ * <p>With <b>Auto Open</b> on it runs the whole cycle by itself: walk up to a
+ * merchant, open it, execute the trades matching your Action + Items filter (up
+ * to Trades/Visit), then close the menu and, after Reopen Delay, do it again.
+ * With Auto Open off it only farms a menu you opened yourself and never closes
+ * it, so you keep control.
  *
- * <p>Requested extras: Rotations can be disabled (head never snaps) and Reach is
- * adjustable. Items are matched by registry id, so it works on any client locale.
+ * <p>Extras: Rotations can be disabled (head never snaps) and Reach is
+ * adjustable. Items are matched by registry id, so it's locale-independent.
  *
  * <p>NOTE: packet-level automation, not exercised in the build environment —
  * trade timing may need tuning on a live server.
@@ -47,26 +46,28 @@ public class AutoTrade extends Module implements HudModule {
 
    private final ModeSetting action = this.add(new ModeSetting("Action", 0, "Buy", "Sell"));
    private final StringSetting items = this.add(new StringSetting("Items", "emerald"));
-   private final NumberSetting delay = this.add(new NumberSetting("Delay", 4, 1, 40, 1));
+   private final BooleanSetting autoOpen = this.add(new BooleanSetting("Auto Open", true));
+   private final NumberSetting tradesPerVisit = this.add(new NumberSetting("Trades/Visit", 12, 1, 64, 1));
+   private final NumberSetting delay = this.add(new NumberSetting("Delay", 3, 1, 40, 1));
+   private final NumberSetting reopenDelay = this.add(new NumberSetting("Reopen Delay", 20, 5, 100, 5));
    private final NumberSetting reach = this.add(new NumberSetting("Reach", 4, 3, 6, 1));
    private final BooleanSetting rotations = this.add(new BooleanSetting("Rotations", false));
-   private final BooleanSetting autoOpen = this.add(new BooleanSetting("Auto Open", false));
 
    private int tickCounter;
-   private int closeCooldown;
-   private boolean wasMerchantOpen;
+   private int visitCooldown;
+   private int tradesThisVisit;
    private int trades;
    private String status = "—";
 
    public AutoTrade() {
-      super("Auto Trade", "Farms the open villager trade (Buy/Sell filter, optional reach).", Category.FARMING);
+      super("Auto Trade", "Fully auto villager trading: open, buy/sell, close, repeat.", Category.FARMING);
    }
 
    protected void onEnable() {
       this.trades = 0;
       this.tickCounter = 0;
-      this.closeCooldown = 0;
-      this.wasMerchantOpen = false;
+      this.visitCooldown = 0;
+      this.tradesThisVisit = 0;
       this.status = "—";
    }
 
@@ -77,27 +78,40 @@ public class AutoTrade extends Module implements HudModule {
 
       class_1703 handler = mc.field_1724.field_7512;
       boolean merchantOpen = handler instanceof class_1728;
-      if (this.wasMerchantOpen && !merchantOpen) {
-         this.closeCooldown = 60; // ~3s grace so the user can actually leave the villager
-      }
-      this.wasMerchantOpen = merchantOpen;
-      if (this.closeCooldown > 0 && !merchantOpen) {
-         --this.closeCooldown;
+
+      if (merchantOpen) {
+         if (++this.tickCounter < this.delay.get()) {
+            return;
+         }
+         this.tickCounter = 0;
+         class_1728 merchant = (class_1728)handler;
+
+         if (!this.autoOpen.get()) {
+            // Manual mode: just farm what the user opened, never close it.
+            this.tradeOnce(merchant);
+            return;
+         }
+         // Full-auto: buy up to the per-visit cap, then close.
+         if (this.tradesThisVisit >= this.tradesPerVisit.get() || !this.tradeOnce(merchant)) {
+            this.closeMenu();
+         } else {
+            ++this.tradesThisVisit;
+         }
+         return;
       }
 
+      // No merchant open.
+      this.tradesThisVisit = 0;
+      if (this.visitCooldown > 0) {
+         --this.visitCooldown;
+         this.status = "пауза";
+         return;
+      }
       if (++this.tickCounter < this.delay.get()) {
          return;
       }
       this.tickCounter = 0;
 
-      if (merchantOpen) {
-         this.farm((class_1728)handler);
-         return;
-      }
-      if (this.closeCooldown > 0) {
-         this.status = "пауза (можно выйти)";
-         return;
-      }
       if (this.autoOpen.get() && mc.field_1755 == null) {
          class_3988 target = this.nearestMerchant();
          if (target != null) {
@@ -114,7 +128,8 @@ public class AutoTrade extends Module implements HudModule {
       }
    }
 
-   private void farm(class_1728 merchant) {
+   /** @return true if a matching, in-stock trade was executed. */
+   private boolean tradeOnce(class_1728 merchant) {
       class_1916 recipes = merchant.method_17438();
       boolean buy = this.action.get().equals("Buy");
       for (int i = 0; i < recipes.size(); ++i) {
@@ -128,10 +143,18 @@ public class AutoTrade extends Module implements HudModule {
             mc.field_1761.method_2906(merchant.field_7763, RESULT_SLOT, 0, class_1713.field_7794, mc.field_1724);
             ++this.trades;
             this.status = (buy ? "покупаю " : "продаю ") + itemId(key);
-            return;
+            return true;
          }
       }
       this.status = "нет подходящей сделки";
+      return false;
+   }
+
+   private void closeMenu() {
+      mc.field_1724.method_7346();
+      this.tradesThisVisit = 0;
+      this.visitCooldown = this.reopenDelay.get();
+      this.status = "закрыл меню";
    }
 
    private boolean matchesItem(class_1799 stack) {
@@ -184,7 +207,8 @@ public class AutoTrade extends Module implements HudModule {
       lines.add("§7" + this.action.get() + ": §d" + this.items.get());
       lines.add("§7Статус: §r" + this.status);
       lines.add("§7Сделок: §a" + this.trades);
-      lines.add("§7Ротации: " + (this.rotations.get() ? "§aВКЛ" : "§7ВЫКЛ") + " §7Reach: §r" + this.reach.get());
+      lines.add("§7Авто: " + (this.autoOpen.get() ? "§aВКЛ" : "§7ВЫКЛ")
+         + " §7Ротации: " + (this.rotations.get() ? "§aВКЛ" : "§7ВЫКЛ"));
       return RenderUtil.panel(ctx, x, y, "Auto Trade", lines);
    }
 }

@@ -1,5 +1,7 @@
 package dev.kafka.kafkautils.module.modules.combat;
 
+import dev.kafka.kafkautils.mixin.ClientPlayerInteractionManagerAccessor;
+import dev.kafka.kafkautils.mixin.MinecraftClientAccessor;
 import dev.kafka.kafkautils.module.Category;
 import dev.kafka.kafkautils.module.HudModule;
 import dev.kafka.kafkautils.module.Module;
@@ -43,6 +45,8 @@ public class AutoMine extends Module implements HudModule {
    private static final class_1268 OFF_HAND = class_1268.values()[1];
 
    private final ModeSetting mode = this.add(new ModeSetting("Mode", 1, "Farm", "Mine", "Hybrid"));
+   private final BooleanSetting fastBreak = this.add(new BooleanSetting("Fast Break", true));
+   private final BooleanSetting fastPlace = this.add(new BooleanSetting("Fast Place", true));
    private final NumberSetting breakSpeed = this.add(new NumberSetting("Break Speed", 1, 1, 20, 1));
    private final BooleanSetting autoSwap = this.add(new BooleanSetting("Auto Swap Pickaxe", true));
    private final NumberSetting swapThreshold = this.add(new NumberSetting("Swap Threshold %", 10, 1, 100, 5));
@@ -82,12 +86,19 @@ public class AutoMine extends Module implements HudModule {
       if (mc.field_1724 == null || mc.field_1687 == null || mc.field_1761 == null) {
          return;
       }
+      // Fast Break / Fast Place: clear the vanilla per-action cooldowns each tick.
+      if (this.fastBreak.get()) {
+         ((ClientPlayerInteractionManagerAccessor)mc.field_1761).setBlockBreakingCooldown(0);
+      }
+      if (this.fastPlace.get()) {
+         ((MinecraftClientAccessor)mc).setItemUseCooldown(0);
+      }
       if (this.delayTicks > 0) {
          --this.delayTicks;
          return;
       }
-      // Break Speed throttles how often a cycle step runs.
-      if (++this.tickCounter < this.breakSpeed.get()) {
+      // Break Speed throttles how often a cycle step runs (ignored under Fast Break).
+      if (!this.fastBreak.get() && ++this.tickCounter < this.breakSpeed.get()) {
          return;
       }
       this.tickCounter = 0;

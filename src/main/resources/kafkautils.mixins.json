@@ -5,7 +5,9 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "ClientBossBarHudAccessor",
-    "ClientPlayNetworkHandlerMixin"
+    "ClientPlayNetworkHandlerMixin",
+    "ClientPlayerInteractionManagerAccessor",
+    "MinecraftClientAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
