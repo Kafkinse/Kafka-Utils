@@ -9,8 +9,11 @@ import dev.kafka.kafkautils.setting.NumberSetting;
 import dev.kafka.kafkautils.setting.StringSetting;
 import dev.kafka.kafkautils.util.RenderUtil;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
 import net.minecraft.class_1268;
 import net.minecraft.class_1297;
 import net.minecraft.class_1703;
@@ -28,21 +31,24 @@ import net.minecraft.class_7923;
  * Auto-trades with villagers/wandering traders (inspired by sebseb7's
  * autotrade-fabric).
  *
- * <p>With <b>Auto Open</b> on it runs the whole cycle by itself: walk up to a
+ * <p>With <b>Auto Open</b> on it runs the whole cycle by itself: walk to a
  * merchant, open it, execute the trades matching your Action + Items filter (up
  * to Trades/Visit), then close the menu and, after Reopen Delay, do it again.
- * With Auto Open off it only farms a menu you opened yourself and never closes
- * it, so you keep control.
+ * Villagers that have nothing left to trade are remembered and skipped for
+ * "Skip Sold-Out" seconds so it stops poking an exhausted one. With Auto Open off
+ * it just farms a menu you opened yourself and never closes it.
  *
- * <p>Extras: Rotations can be disabled (head never snaps) and Reach is
- * adjustable. Items are matched by registry id, so it's locale-independent.
+ * <p>Each trade is done in two steps a tick apart — select the recipe, then take
+ * the result — so the output slot is filled before it's collected.
  *
- * <p>NOTE: packet-level automation, not exercised in the build environment —
- * trade timing may need tuning on a live server.
+ * <p>NOTE: packet-level automation, not exercised in the build environment.
  */
 public class AutoTrade extends Module implements HudModule {
    private static final class_1268 MAIN_HAND = class_1268.values()[0];
    private static final int RESULT_SLOT = 2;
+   private static final int SELECTED = 0;
+   private static final int TOOK = 1;
+   private static final int NONE = 2;
 
    private final ModeSetting action = this.add(new ModeSetting("Action", 0, "Buy", "Sell"));
    private final StringSetting items = this.add(new StringSetting("Items", "emerald"));
@@ -50,12 +56,16 @@ public class AutoTrade extends Module implements HudModule {
    private final NumberSetting tradesPerVisit = this.add(new NumberSetting("Trades/Visit", 12, 1, 64, 1));
    private final NumberSetting delay = this.add(new NumberSetting("Delay", 3, 1, 40, 1));
    private final NumberSetting reopenDelay = this.add(new NumberSetting("Reopen Delay", 20, 5, 100, 5));
+   private final NumberSetting skipSoldOut = this.add(new NumberSetting("Skip Sold-Out", 60, 10, 600, 10));
    private final NumberSetting reach = this.add(new NumberSetting("Reach", 4, 3, 6, 1));
    private final BooleanSetting rotations = this.add(new BooleanSetting("Rotations", false));
 
+   private final Map<UUID, Long> exhaustedUntil = new HashMap<>();
    private int tickCounter;
    private int visitCooldown;
    private int tradesThisVisit;
+   private int selectedIndex = -1;
+   private UUID currentVillager;
    private int trades;
    private String status = "—";
 
@@ -68,6 +78,9 @@ public class AutoTrade extends Module implements HudModule {
       this.tickCounter = 0;
       this.visitCooldown = 0;
       this.tradesThisVisit = 0;
+      this.selectedIndex = -1;
+      this.currentVillager = null;
+      this.exhaustedUntil.clear();
       this.status = "—";
    }
 
@@ -87,21 +100,28 @@ public class AutoTrade extends Module implements HudModule {
          class_1728 merchant = (class_1728)handler;
 
          if (!this.autoOpen.get()) {
-            // Manual mode: just farm what the user opened, never close it.
-            this.tradeOnce(merchant);
+            this.tradeStep(merchant); // manual: farm, never close
             return;
          }
-         // Full-auto: buy up to the per-visit cap, then close.
-         if (this.tradesThisVisit >= this.tradesPerVisit.get() || !this.tradeOnce(merchant)) {
+         if (this.tradesThisVisit >= this.tradesPerVisit.get()) {
             this.closeMenu();
-         } else {
+            return;
+         }
+         int result = this.tradeStep(merchant);
+         if (result == TOOK) {
             ++this.tradesThisVisit;
+         } else if (result == NONE) {
+            if (this.currentVillager != null) {
+               this.exhaustedUntil.put(this.currentVillager, System.currentTimeMillis() + this.skipSoldOut.get() * 1000L);
+            }
+            this.closeMenu();
          }
          return;
       }
 
       // No merchant open.
       this.tradesThisVisit = 0;
+      this.selectedIndex = -1;
       if (this.visitCooldown > 0) {
          --this.visitCooldown;
          this.status = "пауза";
@@ -115,6 +135,7 @@ public class AutoTrade extends Module implements HudModule {
       if (this.autoOpen.get() && mc.field_1755 == null) {
          class_3988 target = this.nearestMerchant();
          if (target != null) {
+            this.currentVillager = target.method_5667();
             if (this.rotations.get()) {
                this.aimAt(target);
             }
@@ -128,8 +149,16 @@ public class AutoTrade extends Module implements HudModule {
       }
    }
 
-   /** @return true if a matching, in-stock trade was executed. */
-   private boolean tradeOnce(class_1728 merchant) {
+   /** Two-phase: select a matching recipe, then (next call) take its result. */
+   private int tradeStep(class_1728 merchant) {
+      if (this.selectedIndex >= 0) {
+         mc.field_1761.method_2906(merchant.field_7763, RESULT_SLOT, 0, class_1713.field_7794, mc.field_1724);
+         ++this.trades;
+         this.selectedIndex = -1;
+         this.status = "забрал";
+         return TOOK;
+      }
+
       class_1916 recipes = merchant.method_17438();
       boolean buy = this.action.get().equals("Buy");
       for (int i = 0; i < recipes.size(); ++i) {
@@ -140,19 +169,19 @@ public class AutoTrade extends Module implements HudModule {
          class_1799 key = buy ? offer.method_8250() : offer.method_19272();
          if (this.matchesItem(key)) {
             merchant.method_20215(i);
-            mc.field_1761.method_2906(merchant.field_7763, RESULT_SLOT, 0, class_1713.field_7794, mc.field_1724);
-            ++this.trades;
-            this.status = (buy ? "покупаю " : "продаю ") + itemId(key);
-            return true;
+            this.selectedIndex = i;
+            this.status = (buy ? "выбрал " : "продаю ") + itemId(key);
+            return SELECTED;
          }
       }
       this.status = "нет подходящей сделки";
-      return false;
+      return NONE;
    }
 
    private void closeMenu() {
       mc.field_1724.method_7346();
       this.tradesThisVisit = 0;
+      this.selectedIndex = -1;
       this.visitCooldown = this.reopenDelay.get();
       this.status = "закрыл меню";
    }
@@ -172,10 +201,15 @@ public class AutoTrade extends Module implements HudModule {
    }
 
    private class_3988 nearestMerchant() {
+      long now = System.currentTimeMillis();
       class_3988 best = null;
       double bestSq = (double)(this.reach.get() * this.reach.get());
       for (class_1297 e : mc.field_1687.method_18112()) {
          if (e instanceof class_3988 merchant) {
+            Long until = this.exhaustedUntil.get(e.method_5667());
+            if (until != null && now < until) {
+               continue; // skip a merchant we already emptied
+            }
             double sq = mc.field_1724.method_5858(e);
             if (sq <= bestSq) {
                bestSq = sq;
@@ -206,7 +240,7 @@ public class AutoTrade extends Module implements HudModule {
       List<String> lines = new ArrayList<>();
       lines.add("§7" + this.action.get() + ": §d" + this.items.get());
       lines.add("§7Статус: §r" + this.status);
-      lines.add("§7Сделок: §a" + this.trades);
+      lines.add("§7Сделок: §a" + this.trades + " §7| пропущено: §r" + this.exhaustedUntil.size());
       lines.add("§7Авто: " + (this.autoOpen.get() ? "§aВКЛ" : "§7ВЫКЛ")
          + " §7Ротации: " + (this.rotations.get() ? "§aВКЛ" : "§7ВЫКЛ"));
       return RenderUtil.panel(ctx, x, y, "Auto Trade", lines);

@@ -10,7 +10,6 @@ import dev.kafka.kafkautils.module.modules.chat.PlayerTracker;
 import dev.kafka.kafkautils.module.modules.chat.StaffList;
 import dev.kafka.kafkautils.module.modules.chat.StaffNotify;
 import dev.kafka.kafkautils.module.modules.combat.ArmorAlert;
-import dev.kafka.kafkautils.module.modules.combat.AutoBadOmen;
 import dev.kafka.kafkautils.module.modules.combat.AutoRaid;
 import dev.kafka.kafkautils.module.modules.combat.DpsMeter;
 import dev.kafka.kafkautils.module.modules.combat.EnemyStatus;
@@ -48,7 +47,6 @@ public final class ModuleManager {
 
    public static void init() {
       register(new AutoRaid());
-      register(new AutoBadOmen());
       register(new TotemCounter());
       register(new EnemyStatus());
       register(new PvPLogger());
