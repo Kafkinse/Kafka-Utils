@@ -95,7 +95,7 @@ public class MaceAlert extends Module implements HudModule {
       }
 
       double velocityY = attacker.method_18798().field_1351;
-      double heightAbove = attacker.method_73189().field_1351 - mc.field_1724.method_73189().field_1351;
+      double heightAbove = attacker.method_61411().field_1351 - mc.field_1724.method_61411().field_1351;
       double distance = Math.sqrt(mc.field_1724.method_5858(attacker));
 
       if (velocityY < -0.5 && heightAbove > 0.5 && distance < 8.0) {

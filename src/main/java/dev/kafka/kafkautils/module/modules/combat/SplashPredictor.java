@@ -24,7 +24,7 @@ public class SplashPredictor extends Module implements WorldRenderModule {
                class_1792 it = p.method_6047().method_7909();
                if (it == class_1802.field_8436 || it == class_1802.field_8150) {
                   boolean inRange = mc.field_1724.method_5858(p) <= (double)16.0F;
-                  Render3D.circle(p.method_73189(), 4.0F, inRange ? -53200 : -29696);
+                  Render3D.circle(p.method_61411(), 4.0F, inRange ? -53200 : -29696);
                }
             }
          }

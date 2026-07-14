@@ -117,16 +117,17 @@ public class ClickGuiScreen extends class_437 {
          List<String> vals = list.values();
 
          for(int i = 0; i < vals.size(); ++i) {
+            int idx = i;
             class_342 field = new class_342(this.field_22793, x, y, w - 16, 14, class_2561.method_43470(s.getName()));
             field.method_1880(128);
             field.method_1852((String)vals.get(i));
             field.method_1863((v) -> {
-               list.setEntry(i, v);
+               list.setEntry(idx, v);
                ConfigManager.save();
             });
             this.method_37063(field);
             this.method_37063(class_4185.method_46430(class_2561.method_43470("§cx"), (b) -> {
-               list.removeEntry(i);
+               list.removeEntry(idx);
                ConfigManager.save();
                this.method_41843();
             }).method_46434(x + w - 14, y, 14, 14).method_46431());

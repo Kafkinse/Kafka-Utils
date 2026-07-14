@@ -47,7 +47,7 @@ public class InventorySorter extends Module implements HudModule {
       if (mc.field_1724 == null) return;
       List<class_1799> items = new ArrayList();
       // Save hotbar and inventory
-      net.minecraft.class_1661 inv = mc.field_1724.method_7371();
+      net.minecraft.class_1661 inv = mc.field_1724.method_31548();
       for (int i = 0; i < 36; i++) {
          items.add(inv.method_5438(i).method_7938());
       }
@@ -63,7 +63,7 @@ public class InventorySorter extends Module implements HudModule {
          return;
       }
 
-      net.minecraft.class_1661 inv = mc.field_1724.method_7371();
+      net.minecraft.class_1661 inv = mc.field_1724.method_31548();
       List<String> missing = new ArrayList();
       this.activePreset = name;
 

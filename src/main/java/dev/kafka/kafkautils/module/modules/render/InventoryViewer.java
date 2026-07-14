@@ -74,13 +74,13 @@ public class InventoryViewer extends Module implements HudModule {
       // Hotbar
       StringBuilder hotbar = new StringBuilder("§7[");
       for (int i = 0; i < 9; i++) {
-         net.minecraft.class_1799 stack = target.method_7371().method_5438(i);
+         net.minecraft.class_1799 stack = target.method_31548().method_5438(i);
          if (stack.method_7960()) {
             hotbar.append("§8_");
          } else {
             String itemName = stack.method_7909().method_63680().getString();
             if (itemName.length() > 4) itemName = itemName.substring(0, 4) + ".";
-            boolean isSelected = i == target.method_7371().field_7545;
+            boolean isSelected = i == target.method_31548().field_7545;
             hotbar.append(isSelected ? "§a" : "§f").append(itemName);
          }
          if (i < 8) hotbar.append("§7|");

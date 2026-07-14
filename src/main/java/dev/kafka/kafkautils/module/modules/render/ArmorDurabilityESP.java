@@ -16,11 +16,11 @@ public class ArmorDurabilityESP extends Module implements WorldRenderModule {
 
    public void onWorldRender(WorldRenderContext ctx) {
       if (mc.field_1687 != null && mc.field_1724 != null) {
-         class_243 cameraPos = mc.field_1769.method_19325();
+         class_243 cameraPos = mc.field_1724.method_33571();
 
          for(class_742 p : mc.field_1687.method_18456()) {
             if (p != mc.field_1724) {
-               class_243 pos = p.method_73189();
+               class_243 pos = p.method_61411();
                double topY = pos.field_1351 + (double)p.method_17682() + 0.7;
 
                class_243 toPlayer = new class_243(
