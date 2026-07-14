@@ -80,7 +80,7 @@ public class InventoryViewer extends Module implements HudModule {
          } else {
             String itemName = stack.method_7909().method_63680().getString();
             if (itemName.length() > 4) itemName = itemName.substring(0, 4) + ".";
-            boolean isSelected = i == target.method_31548().field_7545;
+            boolean isSelected = i == target.method_31548().method_67532();
             hotbar.append(isSelected ? "§a" : "§f").append(itemName);
          }
          if (i < 8) hotbar.append("§7|");

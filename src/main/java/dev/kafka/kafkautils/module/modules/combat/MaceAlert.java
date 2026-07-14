@@ -116,7 +116,7 @@ public class MaceAlert extends Module implements HudModule {
 
    private static boolean isMace(class_1799 stack) {
       return !stack.method_7960()
-         && stack.method_7909().method_63680().method_63700().toLowerCase(Locale.ROOT).contains("mace");
+         && stack.method_7964().getString().toLowerCase(Locale.ROOT).contains("mace");
    }
 
    private float estimateDamage(class_742 attacker) {

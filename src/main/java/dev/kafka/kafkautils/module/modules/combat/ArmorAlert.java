@@ -10,12 +10,16 @@ import dev.kafka.kafkautils.util.RenderUtil;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import net.minecraft.class_1304;
+import net.minecraft.class_1799;
 import net.minecraft.class_332;
 import net.minecraft.class_742;
 
 public class ArmorAlert extends Module implements HudModule {
+   private static final class_1304[] ARMOR_SLOTS = {class_1304.HEAD, class_1304.CHEST, class_1304.LEGS, class_1304.FEET};
    private final NumberSetting thresholdPercent = (NumberSetting)this.add(new NumberSetting("Threshold %", 15, 1, 100, 5));
    private final BooleanSetting showInHud = (BooleanSetting)this.add(new BooleanSetting("Show in HUD", true));
    private final BooleanSetting chatAlert = (BooleanSetting)this.add(new BooleanSetting("Chat Alert", true));
@@ -36,22 +40,23 @@ public class ArmorAlert extends Module implements HudModule {
             if (p != mc.field_1724) {
                UUID id = p.method_5667();
                List<String> low = new ArrayList();
-               for (net.minecraft.class_1799 stack : p.method_6136()) {
-                  if (!stack.method_7960() && stack.method_7909().method_63680().method_63700().contains("armor")) {
-                     int dmg = stack.method_7929();
-                     int maxDmg = stack.method_7909().method_63680().method_63700().contains("netherite") ? 407
-                        : stack.method_7909().method_63680().method_63700().contains("diamond") ? 264
-                        : stack.method_7909().method_63680().method_63700().contains("iron") ? 165
-                        : stack.method_7909().method_63680().method_63700().contains("chain") ? 165
-                        : stack.method_7909().method_63680().method_63700().contains("gold") ? 77
-                        : 0;
-                     if (maxDmg > 0) {
-                        int maxDura = maxDmg;
-                        int curDura = maxDmg - dmg;
-                        float pct = (float)curDura / (float)maxDura * 100.0F;
-                        if (pct <= (float)this.thresholdPercent.get()) {
-                           low.add(stack.method_7964().getString());
-                        }
+               for (class_1304 slot : ARMOR_SLOTS) {
+                  class_1799 stack = p.method_6118(slot);
+                  if (stack.method_7960()) {
+                     continue;
+                  }
+                  String name = stack.method_7964().getString().toLowerCase(Locale.ROOT);
+                  int maxDmg = name.contains("netherite") ? 407
+                     : name.contains("diamond") ? 264
+                     : name.contains("iron") ? 165
+                     : name.contains("chain") ? 165
+                     : name.contains("gold") ? 77
+                     : 0;
+                  if (maxDmg > 0) {
+                     int curDura = maxDmg - stack.method_7919();
+                     float pct = (float)curDura / (float)maxDmg * 100.0F;
+                     if (pct <= (float)this.thresholdPercent.get()) {
+                        low.add(stack.method_7964().getString());
                      }
                   }
                }

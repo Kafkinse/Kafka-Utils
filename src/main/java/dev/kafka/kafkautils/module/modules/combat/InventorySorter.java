@@ -37,7 +37,7 @@ public class InventorySorter extends Module implements HudModule {
       if (mc.field_1724 == null) return;
 
       // Check if inventory is open (F key or container screen)
-      if (mc.field_1755 != null && mc.field_1755 instanceof net.minecraft.class_1703) {
+      if (mc.field_1755 != null && mc.field_1755 instanceof net.minecraft.class_465) {
          // Check for our buttons in the GUI
          this.showSaveLoadButtons();
       }
@@ -49,7 +49,7 @@ public class InventorySorter extends Module implements HudModule {
       // Save hotbar and inventory
       net.minecraft.class_1661 inv = mc.field_1724.method_31548();
       for (int i = 0; i < 36; i++) {
-         items.add(inv.method_5438(i).method_7938());
+         items.add(inv.method_5438(i).method_7972());
       }
       this.presets.put(name, items);
       ChatUtil.info("§aPreset saved: §d" + name);

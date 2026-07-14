@@ -15,7 +15,7 @@ import net.minecraft.class_332;
 import net.minecraft.class_742;
 
 public class DpsMeter extends Module implements HudModule {
-   private final LinkedHashMap<UUID, DamageEntry> tracking = new LinkedHashMap();
+   private final LinkedHashMap<String, DamageEntry> tracking = new LinkedHashMap();
    private float lastHp = -1.0F;
    private String lastAttacker = null;
 
@@ -50,7 +50,7 @@ public class DpsMeter extends Module implements HudModule {
                entry = new DamageEntry();
                this.tracking.put(name, entry);
                if (this.tracking.size() > 10) {
-                  Iterator<Map.Entry<UUID, DamageEntry>> it = this.tracking.entrySet().iterator();
+                  Iterator<Map.Entry<String, DamageEntry>> it = this.tracking.entrySet().iterator();
                   it.next();
                   it.remove();
                }

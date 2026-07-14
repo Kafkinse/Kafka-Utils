@@ -3,6 +3,7 @@ package dev.kafka.kafkautils.module.modules.combat;
 import dev.kafka.kafkautils.module.Category;
 import dev.kafka.kafkautils.module.HudModule;
 import dev.kafka.kafkautils.module.Module;
+import dev.kafka.kafkautils.util.ChatUtil;
 import dev.kafka.kafkautils.util.RenderUtil;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

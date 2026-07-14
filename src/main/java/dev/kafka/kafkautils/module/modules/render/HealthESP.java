@@ -67,7 +67,7 @@ public class HealthESP extends Module implements WorldRenderModule {
                Render3D.drawFilled(fg, hpColor(hpFrac));
 
                // Armor bar below health
-               float armor = p.method_5825();
+               float armor = p.method_6096();
                if (armor > 0.0F) {
                   float maxArmor = 20.0F;
                   float armorFrac = Math.min(1.0F, armor / maxArmor);
