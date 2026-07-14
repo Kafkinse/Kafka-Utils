@@ -27,7 +27,7 @@ public class AutoRaid extends Module {
    private int cooldown = 0;
 
    public AutoRaid() {
-      super("Auto Raid", "Auto-finds an Ominous Bottle and drinks it after a raid ends / to keep Bad Omen.", Category.COMBAT);
+      super("Auto Raid", "Auto-finds an Ominous Bottle and drinks it after a raid ends / to keep Bad Omen.", Category.FARMING);
    }
 
    protected void onEnable() {

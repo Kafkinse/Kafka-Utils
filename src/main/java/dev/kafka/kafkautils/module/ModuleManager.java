@@ -20,6 +20,7 @@ import dev.kafka.kafkautils.module.modules.combat.AutoTrade;
 import dev.kafka.kafkautils.module.modules.combat.KillDeathTracker;
 import dev.kafka.kafkautils.module.modules.combat.MaceAlert;
 import dev.kafka.kafkautils.module.modules.combat.SelfDurabilityAlert;
+import dev.kafka.kafkautils.module.modules.combat.StorageAutoSort;
 import dev.kafka.kafkautils.module.modules.combat.PearlTracker;
 import dev.kafka.kafkautils.module.modules.combat.PvPLogger;
 import dev.kafka.kafkautils.module.modules.combat.SplashPredictor;
@@ -61,6 +62,7 @@ public final class ModuleManager {
       register(new AutoTrade());
       register(new SelfDurabilityAlert());
       register(new InventorySorter());
+      register(new StorageAutoSort());
       register(new EffectLogger());
       register(new TrialSpawnerEsp());
       register(new OminousVaultHighlighter());

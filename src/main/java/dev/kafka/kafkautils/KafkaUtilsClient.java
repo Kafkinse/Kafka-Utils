@@ -10,6 +10,8 @@ import dev.kafka.kafkautils.module.modules.chat.AntiSpam;
 import dev.kafka.kafkautils.module.modules.chat.ChatPing;
 import dev.kafka.kafkautils.module.modules.chat.ClanChatHighlight;
 import dev.kafka.kafkautils.module.modules.chat.CoordinateShare;
+import dev.kafka.kafkautils.module.modules.combat.InventorySorter;
+import dev.kafka.kafkautils.module.modules.combat.StorageAutoSort;
 import dev.kafka.kafkautils.util.Render3D;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -33,6 +35,8 @@ public class KafkaUtilsClient implements ClientModInitializer {
    private boolean hideKeyWasDown = false;
    private static class_304 shareCoordsKey;
    private boolean shareKeyWasDown = false;
+   private static class_304 sortKey;
+   private boolean sortKeyWasDown = false;
 
    public void onInitializeClient() {
       ModuleManager.init();
@@ -40,6 +44,7 @@ public class KafkaUtilsClient implements ClientModInitializer {
       openGuiKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.open_gui", class_307.field_1668, 88, class_11900.field_62556));
       hideHudKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.hide_hud", class_307.field_1668, 261, class_11900.field_62556));
       shareCoordsKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.share_coords", class_307.field_1668, -1, class_11900.field_62556));
+      sortKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.sort", class_307.field_1668, -1, class_11900.field_62556));
       ClientTickEvents.END_CLIENT_TICK.register((ClientTickEvents.EndTick)(client) -> {
          class_3675.class_306 bound = KeyBindingHelper.getBoundKeyOf(openGuiKey);
          boolean down = bound.method_1442() == class_307.field_1668 && bound.method_1444() != -1 && client.method_22683() != null && class_3675.method_15987(client.method_22683(), bound.method_1444());
@@ -69,6 +74,23 @@ public class KafkaUtilsClient implements ClientModInitializer {
          }
 
          this.shareKeyWasDown = sDown;
+         class_3675.class_306 sortk = KeyBindingHelper.getBoundKeyOf(sortKey);
+         boolean sortDown = sortk.method_1442() == class_307.field_1668 && sortk.method_1444() != -1 && client.method_22683() != null && class_3675.method_15987(client.method_22683(), sortk.method_1444());
+         if (sortDown && !this.sortKeyWasDown) {
+            boolean sorted = false;
+            StorageAutoSort storage = (StorageAutoSort)ModuleManager.get(StorageAutoSort.class);
+            if (storage != null && storage.isEnabled()) {
+               sorted = storage.sortNow();
+            }
+            if (!sorted) {
+               InventorySorter inv = (InventorySorter)ModuleManager.get(InventorySorter.class);
+               if (inv != null && inv.isEnabled()) {
+                  inv.sortNow();
+               }
+            }
+         }
+
+         this.sortKeyWasDown = sortDown;
          if (client.field_1724 != null && client.field_1687 != null) {
             ModuleManager.onTick();
          }
