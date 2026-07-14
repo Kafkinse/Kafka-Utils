@@ -23,6 +23,7 @@ import net.minecraft.class_2350;
 import net.minecraft.class_2680;
 import net.minecraft.class_332;
 import net.minecraft.class_3965;
+import net.minecraft.class_7923;
 
 /**
  * Auto-mining assistant. In a tight loop it either mines target ores the player
@@ -106,9 +107,10 @@ public class AutoMine extends Module implements HudModule {
       String modeName = this.mode.get();
       boolean canMine = !modeName.equals("Farm");
       boolean canFarm = !modeName.equals("Mine");
+      boolean fortuneOk = !this.fortuneOnly.get() || this.hasFortune(mc.field_1724.method_6047());
 
       // Desync guard: never keep hitting a block the server already cleared.
-      if (canMine && !state.method_26215() && this.isTargetOre(state)) {
+      if (canMine && fortuneOk && !state.method_26215() && this.isTargetOre(state)) {
          this.mineBlock(pos, side, state);
          return;
       }
@@ -135,7 +137,7 @@ public class AutoMine extends Module implements HudModule {
       }
       if (broken) {
          ++this.cycles;
-         String type = this.oreType(this.blockName(state));
+         String type = this.oreType(blockId(state));
          this.drops.merge(type, 1, Integer::sum);
          if (this.antiCheat.get() > 0) {
             this.delayTicks = this.rng.nextInt(this.antiCheat.get() + 1);
@@ -201,9 +203,14 @@ public class AutoMine extends Module implements HudModule {
 
    // --- helpers -----------------------------------------------------------
 
+   /** Detects a pickaxe by its registry id, so custom-named/enchanted picks still count. */
    private boolean isPickaxe(class_1799 stack) {
-      return !stack.method_7960() && stack.method_7964().getString().toLowerCase(Locale.ROOT).contains("pickaxe")
-         && (!this.fortuneOnly.get() || stack.method_7942());
+      return !stack.method_7960() && itemId(stack).contains("pickaxe");
+   }
+
+   /** Best-effort Fortune check: real enchantments or a glint (covers server custom-fortune). */
+   private boolean hasFortune(class_1799 stack) {
+      return stack.method_7942() || stack.method_7958();
    }
 
    private int durabilityPct(class_1799 stack) {
@@ -218,24 +225,29 @@ public class AutoMine extends Module implements HudModule {
    }
 
    private boolean isTargetOre(class_2680 state) {
-      return matches(this.blockName(state));
+      return matches(blockId(state));
    }
 
    private boolean isOre(class_1799 stack) {
-      return !stack.method_7960() && matches(stack.method_7964().getString().toLowerCase(Locale.ROOT));
+      return !stack.method_7960() && matches(itemId(stack));
    }
 
-   private boolean matches(String name) {
+   private boolean matches(String id) {
       for (String t : this.targets.get().split("[,\\s]+")) {
-         if (!t.isBlank() && name.contains(t.trim().toLowerCase(Locale.ROOT))) {
+         if (!t.isBlank() && id.contains(t.trim().toLowerCase(Locale.ROOT))) {
             return true;
          }
       }
       return false;
    }
 
-   private String blockName(class_2680 state) {
-      return state.method_26204().method_9518().getString().toLowerCase(Locale.ROOT);
+   /** Locale-independent registry path, e.g. "netherite_pickaxe" / "deepslate_diamond_ore". */
+   private static String itemId(class_1799 stack) {
+      return class_7923.field_41178.method_10221(stack.method_7909()).method_12832();
+   }
+
+   private static String blockId(class_2680 state) {
+      return class_7923.field_41175.method_10221(state.method_26204()).method_12832();
    }
 
    private String oreType(String name) {

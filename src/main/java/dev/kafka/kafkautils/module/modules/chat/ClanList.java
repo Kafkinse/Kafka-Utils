@@ -11,8 +11,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-import net.minecraft.class_268;
-import net.minecraft.class_269;
+import java.util.UUID;
+import net.minecraft.class_2561;
 import net.minecraft.class_332;
 import net.minecraft.class_640;
 
@@ -20,17 +20,22 @@ import net.minecraft.class_640;
  * Your clan roster, shared by every clan module (Clan Chat Highlight, Team
  * Overlay, …).
  *
- * <p>On a Simple Clans server the plugin puts clan members on a shared scoreboard
- * team (that's what colours their names/tags), so with "Auto (Simple Clans)" on,
- * membership is derived automatically from your own team — no manual list needed.
- * The optional Members field adds extra names on top (allies, etc.).
+ * <p>Simple Clans shows each member's clan tag in the tab list, to the right of
+ * the nick (e.g. "Kirill [KAFKA]"). With "Auto (Simple Clans)" on, this reads the
+ * tag from your own tab entry and treats everyone whose tab entry carries the
+ * same tag as a clan-mate — no manual list needed. The optional Extra Members
+ * field adds names on top (allies, etc.).
  */
 public class ClanList extends Module implements HudModule {
-   private final BooleanSetting autoTeam = this.add(new BooleanSetting("Auto (Simple Clans)", true));
+   private final BooleanSetting autoTag = this.add(new BooleanSetting("Auto (Simple Clans)", true));
    private final StringSetting nicks = this.add(new StringSetting("Extra Members", ""));
 
    public ClanList() {
-      super("Clan List", "Clan roster (auto from Simple Clans team + optional extra names).", Category.CLAN);
+      super("Clan List", "Clan roster (auto from the Simple Clans tab tag + optional extra names).", Category.CLAN);
+   }
+
+   private static String strip(String s) {
+      return s == null ? "" : s.replaceAll("(?i)§[0-9A-FK-OR]", "").trim();
    }
 
    private Set<String> manualMembers() {
@@ -43,43 +48,59 @@ public class ClanList extends Module implements HudModule {
       return out;
    }
 
-   /** @return the scoreboard-team name the local player belongs to, or null. */
-   private String myTeamName() {
-      if (!this.autoTeam.get() || mc.field_1724 == null) {
-         return null;
+   /** The clan tag shown to the right of a player's nick in their tab entry. */
+   private String tagOf(class_640 entry) {
+      if (entry.method_2966() == null) {
+         return "";
       }
-      class_268 team = mc.field_1724.method_5781();
-      return team != null ? team.method_1197() : null;
+      class_2561 dn = entry.method_2971();
+      String display = strip(dn != null ? dn.getString() : entry.method_2966().name());
+      String name = entry.method_2966().name();
+      int idx = display.indexOf(name);
+      return idx >= 0 ? display.substring(idx + name.length()).trim() : "";
    }
 
-   /** @return true if the named player shares the local player's clan team. */
-   private boolean sameTeam(String name) {
-      String mine = this.myTeamName();
-      if (mine == null || mc.field_1687 == null) {
+   /** @return the local player's clan tag, or "" if none/disabled. */
+   private String myTag() {
+      if (!this.autoTag.get() || mc.field_1724 == null || mc.method_1562() == null) {
+         return "";
+      }
+      UUID myId = mc.field_1724.method_5667();
+      for (class_640 entry : mc.method_1562().method_2880()) {
+         if (entry.method_2966() != null && myId.equals(entry.method_2966().id())) {
+            return tagOf(entry);
+         }
+      }
+      return "";
+   }
+
+   private boolean sameClan(String name, String myTag) {
+      if (myTag.isEmpty() || mc.method_1562() == null) {
          return false;
       }
-      class_269 scoreboard = mc.field_1687.method_8428();
-      class_268 team = scoreboard.method_1164(name);
-      return team != null && mine.equals(team.method_1197());
+      for (class_640 entry : mc.method_1562().method_2880()) {
+         if (entry.method_2966() != null && entry.method_2966().name().equalsIgnoreCase(name)) {
+            return myTag.equals(tagOf(entry));
+         }
+      }
+      return false;
    }
 
    public boolean isMember(String name) {
       if (name == null) {
          return false;
       }
-      return this.manualMembers().contains(name.toLowerCase(Locale.ROOT)) || this.sameTeam(name);
+      return this.manualMembers().contains(name.toLowerCase(Locale.ROOT)) || this.sameClan(name, this.myTag());
    }
 
-   /** @return the effective roster (manual names + online team-mates), lower-cased. */
+   /** @return the effective roster (manual names + online clan-mates), lower-cased. */
    public Set<String> members() {
       Set<String> out = new HashSet<>(this.manualMembers());
-      if (this.autoTeam.get() && mc.method_1562() != null) {
+      String tag = this.myTag();
+      if (!tag.isEmpty() && mc.method_1562() != null) {
          for (class_640 entry : mc.method_1562().method_2880()) {
-            if (entry.method_2966() != null) {
-               String name = entry.method_2966().name();
-               if (this.sameTeam(name)) {
-                  out.add(name.toLowerCase(Locale.ROOT));
-               }
+            if (entry.method_2966() != null && tag.equals(tagOf(entry))) {
+               out.add(entry.method_2966().name().toLowerCase(Locale.ROOT));
             }
          }
       }
@@ -92,10 +113,12 @@ public class ClanList extends Module implements HudModule {
       if (mc.method_1562() == null) {
          return out;
       }
+      String tag = this.myTag();
+      Set<String> manual = this.manualMembers();
       for (class_640 entry : mc.method_1562().method_2880()) {
          if (entry.method_2966() != null) {
             String name = entry.method_2966().name();
-            if (this.isMember(name)) {
+            if (manual.contains(name.toLowerCase(Locale.ROOT)) || (!tag.isEmpty() && tag.equals(tagOf(entry)))) {
                out.add(name);
             }
          }
@@ -106,8 +129,8 @@ public class ClanList extends Module implements HudModule {
    public int[] onHudRender(class_332 ctx, int x, int y) {
       List<String> lines = new ArrayList<>();
       List<String> online = onlineMembers();
-      String team = this.myTeamName();
-      lines.add("§7Клан: §d" + (team != null ? team : "—") + " §7| онлайн: §a" + online.size());
+      String tag = this.myTag();
+      lines.add("§7Тег: §d" + (tag.isEmpty() ? "—" : tag) + " §7| онлайн: §a" + online.size());
       if (online.isEmpty()) {
          lines.add("§7никого нет");
       } else {
