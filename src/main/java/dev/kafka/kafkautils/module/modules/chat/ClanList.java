@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import net.minecraft.class_2561;
 import net.minecraft.class_332;
 import net.minecraft.class_640;
@@ -20,18 +21,19 @@ import net.minecraft.class_640;
  * Your clan roster, shared by every clan module (Clan Chat Highlight, Team
  * Overlay, …).
  *
- * <p>Simple Clans shows each member's clan tag in the tab list, to the right of
- * the nick (e.g. "Kirill [KAFKA]"). With "Auto (Simple Clans)" on, this reads the
- * tag from your own tab entry and treats everyone whose tab entry carries the
- * same tag as a clan-mate — no manual list needed. The optional Extra Members
- * field adds names on top (allies, etc.).
+ * <p>Simple Clans shows each member's clan tag in the tab list (to the right of
+ * the nick). Set your tag in <b>Clan Tag</b> (e.g. OLD) and everyone whose tab
+ * entry carries that tag is treated as a clan-mate. Leave it empty and, with
+ * <b>Auto Tag</b> on, it reads the tag from your own tab entry automatically.
+ * The optional Extra Members field adds names on top (allies, etc.).
  */
 public class ClanList extends Module implements HudModule {
-   private final BooleanSetting autoTag = this.add(new BooleanSetting("Auto (Simple Clans)", true));
+   private final StringSetting clanTag = this.add(new StringSetting("Clan Tag", ""));
+   private final BooleanSetting autoTag = this.add(new BooleanSetting("Auto Tag", true));
    private final StringSetting nicks = this.add(new StringSetting("Extra Members", ""));
 
    public ClanList() {
-      super("Clan List", "Clan roster (auto from the Simple Clans tab tag + optional extra names).", Category.CLAN);
+      super("Clan List", "Clan roster from the Simple Clans tab tag (manual or auto) + extra names.", Category.CLAN);
    }
 
    private static String strip(String s) {
@@ -48,58 +50,69 @@ public class ClanList extends Module implements HudModule {
       return out;
    }
 
-   /** The clan tag shown to the right of a player's nick in their tab entry. */
-   private String tagOf(class_640 entry) {
-      if (entry.method_2966() == null) {
-         return "";
-      }
+   private String displayOf(class_640 entry) {
       class_2561 dn = entry.method_2971();
-      String display = strip(dn != null ? dn.getString() : entry.method_2966().name());
-      String name = entry.method_2966().name();
-      int idx = display.indexOf(name);
-      return idx >= 0 ? display.substring(idx + name.length()).trim() : "";
+      if (dn != null) {
+         return strip(dn.getString());
+      }
+      return entry.method_2966() != null ? entry.method_2966().name() : "";
    }
 
-   /** @return the local player's clan tag, or "" if none/disabled. */
-   private String myTag() {
+   /** The effective clan tag: the manual value, or the one auto-read from your tab entry. */
+   private String effectiveTag() {
+      String manual = this.clanTag.get().trim();
+      if (!manual.isEmpty()) {
+         return manual;
+      }
       if (!this.autoTag.get() || mc.field_1724 == null || mc.method_1562() == null) {
          return "";
       }
       UUID myId = mc.field_1724.method_5667();
       for (class_640 entry : mc.method_1562().method_2880()) {
          if (entry.method_2966() != null && myId.equals(entry.method_2966().id())) {
-            return tagOf(entry);
+            String display = this.displayOf(entry);
+            String name = entry.method_2966().name();
+            int idx = display.indexOf(name);
+            return idx >= 0 ? display.substring(idx + name.length()).trim() : "";
          }
       }
       return "";
    }
 
-   private boolean sameClan(String name, String myTag) {
-      if (myTag.isEmpty() || mc.method_1562() == null) {
-         return false;
-      }
-      for (class_640 entry : mc.method_1562().method_2880()) {
-         if (entry.method_2966() != null && entry.method_2966().name().equalsIgnoreCase(name)) {
-            return myTag.equals(tagOf(entry));
-         }
-      }
-      return false;
+   private boolean displayHasTag(class_640 entry, Pattern tagPattern) {
+      return tagPattern != null && tagPattern.matcher(this.displayOf(entry)).find();
+   }
+
+   private Pattern tagPattern(String tag) {
+      return tag.isEmpty() ? null : Pattern.compile("(?i)\\b" + Pattern.quote(tag) + "\\b");
    }
 
    public boolean isMember(String name) {
       if (name == null) {
          return false;
       }
-      return this.manualMembers().contains(name.toLowerCase(Locale.ROOT)) || this.sameClan(name, this.myTag());
+      if (this.manualMembers().contains(name.toLowerCase(Locale.ROOT))) {
+         return true;
+      }
+      Pattern p = this.tagPattern(this.effectiveTag());
+      if (p == null || mc.method_1562() == null) {
+         return false;
+      }
+      for (class_640 entry : mc.method_1562().method_2880()) {
+         if (entry.method_2966() != null && entry.method_2966().name().equalsIgnoreCase(name)) {
+            return this.displayHasTag(entry, p);
+         }
+      }
+      return false;
    }
 
    /** @return the effective roster (manual names + online clan-mates), lower-cased. */
    public Set<String> members() {
       Set<String> out = new HashSet<>(this.manualMembers());
-      String tag = this.myTag();
-      if (!tag.isEmpty() && mc.method_1562() != null) {
+      Pattern p = this.tagPattern(this.effectiveTag());
+      if (p != null && mc.method_1562() != null) {
          for (class_640 entry : mc.method_1562().method_2880()) {
-            if (entry.method_2966() != null && tag.equals(tagOf(entry))) {
+            if (entry.method_2966() != null && this.displayHasTag(entry, p)) {
                out.add(entry.method_2966().name().toLowerCase(Locale.ROOT));
             }
          }
@@ -113,12 +126,12 @@ public class ClanList extends Module implements HudModule {
       if (mc.method_1562() == null) {
          return out;
       }
-      String tag = this.myTag();
+      Pattern p = this.tagPattern(this.effectiveTag());
       Set<String> manual = this.manualMembers();
       for (class_640 entry : mc.method_1562().method_2880()) {
          if (entry.method_2966() != null) {
             String name = entry.method_2966().name();
-            if (manual.contains(name.toLowerCase(Locale.ROOT)) || (!tag.isEmpty() && tag.equals(tagOf(entry)))) {
+            if (manual.contains(name.toLowerCase(Locale.ROOT)) || this.displayHasTag(entry, p)) {
                out.add(name);
             }
          }
@@ -129,7 +142,7 @@ public class ClanList extends Module implements HudModule {
    public int[] onHudRender(class_332 ctx, int x, int y) {
       List<String> lines = new ArrayList<>();
       List<String> online = onlineMembers();
-      String tag = this.myTag();
+      String tag = this.effectiveTag();
       lines.add("§7Тег: §d" + (tag.isEmpty() ? "—" : tag) + " §7| онлайн: §a" + online.size());
       if (online.isEmpty()) {
          lines.add("§7никого нет");

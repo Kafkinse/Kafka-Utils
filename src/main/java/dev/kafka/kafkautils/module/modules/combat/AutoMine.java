@@ -18,6 +18,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import net.minecraft.class_1268;
+import net.minecraft.class_1713;
 import net.minecraft.class_1799;
 import net.minecraft.class_239;
 import net.minecraft.class_2338;
@@ -51,6 +52,9 @@ public class AutoMine extends Module implements HudModule {
    private final BooleanSetting autoSwap = this.add(new BooleanSetting("Auto Swap Pickaxe", true));
    private final NumberSetting swapThreshold = this.add(new NumberSetting("Swap Threshold %", 10, 1, 100, 5));
    private final BooleanSetting autoRefill = this.add(new BooleanSetting("Auto Refill Offhand", true));
+   private final BooleanSetting autoDrop = this.add(new BooleanSetting("Auto Drop", false));
+   private final StringSetting dropList = this.add(new StringSetting("Drop Items",
+      "raw_iron,raw_gold,raw_copper,coal,redstone,lapis,quartz,cobblestone,cobbled_deepslate"));
    private final BooleanSetting fortuneOnly = this.add(new BooleanSetting("Fortune Only", false));
    private final BooleanSetting noSwing = this.add(new BooleanSetting("No Swing", false));
    private final NumberSetting antiCheat = this.add(new NumberSetting("AntiCheat Delay", 2, 0, 10, 1));
@@ -64,6 +68,8 @@ public class AutoMine extends Module implements HudModule {
    private int brokenPickaxes;
    private int tickCounter;
    private int delayTicks;
+   private int dropTimer;
+   private String note = "";
 
    public AutoMine() {
       super("Auto Mine", "Places/breaks ores in a loop for fast Fortune farming.", Category.FARMING);
@@ -75,6 +81,8 @@ public class AutoMine extends Module implements HudModule {
       this.brokenPickaxes = 0;
       this.tickCounter = 0;
       this.delayTicks = 0;
+      this.dropTimer = 0;
+      this.note = "";
       this.sessionStart = System.currentTimeMillis();
    }
 
@@ -86,12 +94,20 @@ public class AutoMine extends Module implements HudModule {
       if (mc.field_1724 == null || mc.field_1687 == null || mc.field_1761 == null) {
          return;
       }
+      // Paused while a screen is open, so you can chat / open your inventory freely.
+      if (mc.field_1755 != null) {
+         this.note = "пауза (открыт экран)";
+         return;
+      }
       // Fast Break / Fast Place: clear the vanilla per-action cooldowns each tick.
       if (this.fastBreak.get()) {
          ((ClientPlayerInteractionManagerAccessor)mc.field_1761).setBlockBreakingCooldown(0);
       }
       if (this.fastPlace.get()) {
          ((MinecraftClientAccessor)mc).setItemUseCooldown(0);
+      }
+      if (this.autoDrop.get()) {
+         this.dropProducts();
       }
       if (this.delayTicks > 0) {
          --this.delayTicks;
@@ -115,30 +131,83 @@ public class AutoMine extends Module implements HudModule {
       class_2350 side = hit.method_17780();
       class_2680 state = mc.field_1687.method_8320(pos);
 
-      String modeName = this.mode.get();
-      boolean canMine = !modeName.equals("Farm");
-      boolean canFarm = !modeName.equals("Mine");
+      boolean canFarm = !this.mode.get().equals("Mine");
       boolean fortuneOk = !this.fortuneOnly.get() || this.hasFortune(mc.field_1724.method_6047());
+      boolean ore = !state.method_26215() && this.isTargetOre(state);
 
-      // Desync guard: never keep hitting a block the server already cleared.
-      if (canMine && fortuneOk && !state.method_26215() && this.isTargetOre(state)) {
+      // Break a target ore we're looking at (a world ore in Mine, the placed ore in Farm/Hybrid).
+      if (ore && fortuneOk) {
+         this.note = "";
          this.mineBlock(pos, side, state);
          return;
       }
 
+      // Farm / Hybrid: place ore from the off-hand so it can be broken next.
       if (canFarm) {
          class_1799 offhand = mc.field_1724.method_6079();
          if (this.isOre(offhand)) {
+            this.note = "";
             mc.field_1761.method_2896(mc.field_1724, OFF_HAND, hit);
             if (!this.noSwing.get()) {
                mc.field_1724.method_6104(OFF_HAND);
             }
-         } else if (this.autoRefill.get()) {
-            this.autoStop("руда в offhand закончилась (нужен ин-гейм тест refill)");
+         } else if (this.autoRefill.get() && this.refillOffhand()) {
+            this.note = "рефилл оффхенда";
+            this.delayTicks = 1; // let the swap apply before placing
          } else {
-            this.autoStop("руда в offhand закончилась");
+            this.idle("нет руды в оффхенде/инвентаре");
          }
       }
+   }
+
+   /** Moves a matching ore stack from the inventory into the off-hand (SWAP). */
+   private boolean refillOffhand() {
+      for (int i = 0; i < 36; ++i) {
+         class_1799 stack = mc.field_1724.method_31548().method_5438(i);
+         if (this.isOre(stack)) {
+            int slot = i < 9 ? i + 36 : i; // inventory index -> player screen-handler slot
+            mc.field_1761.method_2906(this.playerSyncId(), slot, 40, class_1713.field_7791, mc.field_1724);
+            return true;
+         }
+      }
+      return false;
+   }
+
+   /** Throws away one matching stack per couple of ticks (ore by-products). */
+   private void dropProducts() {
+      if (this.dropTimer > 0) {
+         --this.dropTimer;
+         return;
+      }
+      for (int i = 0; i < 36; ++i) {
+         class_1799 stack = mc.field_1724.method_31548().method_5438(i);
+         if (!stack.method_7960() && this.matchesDrop(stack)) {
+            int slot = i < 9 ? i + 36 : i;
+            mc.field_1761.method_2906(this.playerSyncId(), slot, 1, class_1713.field_7795, mc.field_1724);
+            this.dropTimer = 2;
+            return;
+         }
+      }
+   }
+
+   private boolean matchesDrop(class_1799 stack) {
+      String id = itemId(stack);
+      for (String t : this.dropList.get().split("[,\\s]+")) {
+         if (!t.isBlank() && id.contains(t.trim().toLowerCase(Locale.ROOT))) {
+            return true;
+         }
+      }
+      return false;
+   }
+
+   private int playerSyncId() {
+      return mc.field_1724.field_7512.field_7763;
+   }
+
+   /** Soft pause (no hard stop) so the loop resumes on its own once you refill. */
+   private void idle(String reason) {
+      this.note = reason;
+      this.delayTicks = 20;
    }
 
    private void mineBlock(class_2338 pos, class_2350 side, class_2680 state) {
@@ -187,15 +256,10 @@ public class AutoMine extends Module implements HudModule {
          return true;
       }
       if (!this.isPickaxe(held)) {
-         this.autoStop("нет кирки в хотбаре");
+         this.idle("нет кирки в хотбаре");
          return false;
       }
       return true;
-   }
-
-   private void autoStop(String reason) {
-      ChatUtil.info("§eAuto Mine остановлен: §r" + reason);
-      this.setEnabled(false);
    }
 
    private void printSummary() {
@@ -282,6 +346,9 @@ public class AutoMine extends Module implements HudModule {
    public int[] onHudRender(class_332 ctx, int x, int y) {
       List<String> lines = new ArrayList<>();
       lines.add("§7Режим: §d" + this.mode.get() + " §7| Циклы: §r" + this.cycles);
+      if (!this.note.isEmpty()) {
+         lines.add("§e" + this.note);
+      }
 
       if (mc.field_1724 != null) {
          class_1799 pick = mc.field_1724.method_6047();
