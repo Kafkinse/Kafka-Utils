@@ -8,6 +8,8 @@ import dev.kafka.kafkautils.module.ModuleManager;
 import dev.kafka.kafkautils.module.WorldRenderModule;
 import dev.kafka.kafkautils.module.modules.chat.AntiSpam;
 import dev.kafka.kafkautils.module.modules.chat.ChatPing;
+import dev.kafka.kafkautils.module.modules.chat.ClanChatHighlight;
+import dev.kafka.kafkautils.module.modules.chat.CoordinateShare;
 import dev.kafka.kafkautils.util.Render3D;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -29,12 +31,15 @@ public class KafkaUtilsClient implements ClientModInitializer {
    private boolean openKeyWasDown = false;
    private static class_304 hideHudKey;
    private boolean hideKeyWasDown = false;
+   private static class_304 shareCoordsKey;
+   private boolean shareKeyWasDown = false;
 
    public void onInitializeClient() {
       ModuleManager.init();
       ConfigManager.load();
       openGuiKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.open_gui", class_307.field_1668, 88, class_11900.field_62556));
       hideHudKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.hide_hud", class_307.field_1668, 261, class_11900.field_62556));
+      shareCoordsKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.share_coords", class_307.field_1668, -1, class_11900.field_62556));
       ClientTickEvents.END_CLIENT_TICK.register((ClientTickEvents.EndTick)(client) -> {
          class_3675.class_306 bound = KeyBindingHelper.getBoundKeyOf(openGuiKey);
          boolean down = bound.method_1442() == class_307.field_1668 && bound.method_1444() != -1 && client.method_22683() != null && class_3675.method_15987(client.method_22683(), bound.method_1444());
@@ -54,6 +59,16 @@ public class KafkaUtilsClient implements ClientModInitializer {
          }
 
          this.hideKeyWasDown = hDown;
+         class_3675.class_306 sk = KeyBindingHelper.getBoundKeyOf(shareCoordsKey);
+         boolean sDown = sk.method_1442() == class_307.field_1668 && sk.method_1444() != -1 && client.method_22683() != null && class_3675.method_15987(client.method_22683(), sk.method_1444());
+         if (sDown && !this.shareKeyWasDown && client.field_1755 == null) {
+            CoordinateShare cs = (CoordinateShare)ModuleManager.get(CoordinateShare.class);
+            if (cs != null && cs.isEnabled()) {
+               cs.share();
+            }
+         }
+
+         this.shareKeyWasDown = sDown;
          if (client.field_1724 != null && client.field_1687 != null) {
             ModuleManager.onTick();
          }
@@ -89,8 +104,16 @@ public class KafkaUtilsClient implements ClientModInitializer {
          if (overlay) {
             return message;
          } else {
+            net.minecraft.class_2561 result = message;
             ChatPing ping = (ChatPing)ModuleManager.get(ChatPing.class);
-            return ping != null ? ping.process(message) : message;
+            if (ping != null) {
+               result = ping.process(result);
+            }
+            ClanChatHighlight clan = (ClanChatHighlight)ModuleManager.get(ClanChatHighlight.class);
+            if (clan != null) {
+               result = clan.process(result);
+            }
+            return result;
          }
       });
       ClientPlayConnectionEvents.JOIN.register((ClientPlayConnectionEvents.Join)(handler, sender, client) -> HudManager.onWorldJoin());

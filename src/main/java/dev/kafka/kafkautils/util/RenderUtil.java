@@ -39,11 +39,15 @@ public final class RenderUtil {
       // Backdrop + title strip.
       ctx.method_25294(x, y, x + width, y + height, BG_COLOR);
       ctx.method_25294(x, y, x + width, y + titleH, TITLE_BG);
-      ctx.method_51433(tr, "§l" + title, x + PADDING, y + 2, TITLE_COLOR, true);
+
+      // Title and lines are centred within the panel so nothing hangs over the edge.
+      String titleText = "§l" + title;
+      ctx.method_51433(tr, titleText, x + (width - tr.method_1727(titleText)) / 2, y + 2, TITLE_COLOR, true);
 
       int lineY = y + titleH + PADDING;
       for (String line : lines) {
-         ctx.method_51433(tr, line, x + PADDING, lineY, TEXT_COLOR, true);
+         int lineX = x + (width - tr.method_1727(line)) / 2;
+         ctx.method_51433(tr, line, lineX, lineY, TEXT_COLOR, true);
          lineY += LINE_HEIGHT;
       }
 
