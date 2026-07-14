@@ -135,11 +135,11 @@ public class KafkaUtilsClient implements ClientModInitializer {
       // Outgoing: intercept "// message" (as chat and as command) for Friend Chat.
       ClientSendMessageEvents.ALLOW_CHAT.register((message) -> {
          FriendChat fc = (FriendChat)ModuleManager.get(FriendChat.class);
-         return fc == null || !fc.handleOutgoing(message);
+         return fc == null || !fc.handleChat(message);
       });
       ClientSendMessageEvents.ALLOW_COMMAND.register((command) -> {
          FriendChat fc = (FriendChat)ModuleManager.get(FriendChat.class);
-         return fc == null || !command.startsWith("/") || !fc.handleOutgoing("/" + command);
+         return fc == null || !fc.handleCommand(command);
       });
 
       // Client command: /kafka team add|remove|list
