@@ -13,7 +13,6 @@ import net.minecraft.class_243;
 import net.minecraft.class_742;
 
 public class ArmorDurabilityESP extends Module implements WorldRenderModule {
-   private static final class_1304[] ARMOR_SLOTS = {class_1304.HEAD, class_1304.CHEST, class_1304.LEGS, class_1304.FEET};
 
    public ArmorDurabilityESP() {
       super("Armor Durability ESP", "Shows armor durability above enemies' heads, visible through walls.", Category.RENDER);
@@ -38,7 +37,10 @@ public class ArmorDurabilityESP extends Module implements WorldRenderModule {
                double startY = topY;
 
                // Iterate armor slots
-               for (class_1304 slot : ARMOR_SLOTS) {
+               for (class_1304 slot : class_1304.values()) {
+                  if (!slot.method_46643()) {
+                     continue;
+                  }
                   class_1799 stack = p.method_6118(slot);
                   if (!stack.method_7960()) {
                      int dmg = stack.method_7919();

@@ -19,7 +19,6 @@ import net.minecraft.class_332;
 import net.minecraft.class_742;
 
 public class ArmorAlert extends Module implements HudModule {
-   private static final class_1304[] ARMOR_SLOTS = {class_1304.HEAD, class_1304.CHEST, class_1304.LEGS, class_1304.FEET};
    private final NumberSetting thresholdPercent = (NumberSetting)this.add(new NumberSetting("Threshold %", 15, 1, 100, 5));
    private final BooleanSetting showInHud = (BooleanSetting)this.add(new BooleanSetting("Show in HUD", true));
    private final BooleanSetting chatAlert = (BooleanSetting)this.add(new BooleanSetting("Chat Alert", true));
@@ -40,7 +39,10 @@ public class ArmorAlert extends Module implements HudModule {
             if (p != mc.field_1724) {
                UUID id = p.method_5667();
                List<String> low = new ArrayList();
-               for (class_1304 slot : ARMOR_SLOTS) {
+               for (class_1304 slot : class_1304.values()) {
+                  if (!slot.method_46643()) {
+                     continue;
+                  }
                   class_1799 stack = p.method_6118(slot);
                   if (stack.method_7960()) {
                      continue;
