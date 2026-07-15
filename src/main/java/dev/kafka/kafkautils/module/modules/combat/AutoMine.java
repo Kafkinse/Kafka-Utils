@@ -70,6 +70,8 @@ public class AutoMine extends Module implements HudModule {
    private int tickCounter;
    private int delayTicks;
    private int dropTimer;
+   private class_2338 lastCountedPos;
+   private int countGuard;
    private String note = "";
 
    public AutoMine() {
@@ -83,6 +85,8 @@ public class AutoMine extends Module implements HudModule {
       this.tickCounter = 0;
       this.delayTicks = 0;
       this.dropTimer = 0;
+      this.lastCountedPos = null;
+      this.countGuard = 0;
       this.note = "";
       this.sessionStart = System.currentTimeMillis();
    }
@@ -113,6 +117,9 @@ public class AutoMine extends Module implements HudModule {
       }
       if (this.fastPlace.get()) {
          ((MinecraftClientAccessor)mc).setItemUseCooldown(0);
+      }
+      if (this.countGuard > 0) {
+         --this.countGuard;
       }
       if (this.autoDrop.get()) {
          this.dropProducts();
@@ -156,6 +163,7 @@ public class AutoMine extends Module implements HudModule {
          if (this.isOre(offhand)) {
             this.note = "";
             mc.field_1761.method_2896(mc.field_1724, OFF_HAND, hit);
+            this.lastCountedPos = null; // a freshly placed block should count when broken
             if (!this.noSwing.get()) {
                mc.field_1724.method_6104(OFF_HAND);
             }
@@ -223,7 +231,7 @@ public class AutoMine extends Module implements HudModule {
       if (!this.noSwing.get()) {
          mc.field_1724.method_6104(MAIN_HAND);
       }
-      if (broken) {
+      if (broken && this.countBreak(pos)) {
          ++this.cycles;
          String type = this.oreType(blockId(state));
          this.drops.merge(type, 1, Integer::sum);
@@ -231,6 +239,22 @@ public class AutoMine extends Module implements HudModule {
             this.delayTicks = this.rng.nextInt(this.antiCheat.get() + 1);
          }
       }
+   }
+
+   /**
+    * Dedupe guard: a single physical break can be reported by {@code method_2902}
+    * on two consecutive ticks (the cached crosshair still points at the old block
+    * for a frame once Fast Break zeroes the cooldown). Ignore a repeat "broken"
+    * for the same position within a short window; the window is reset whenever a
+    * block is placed, so a genuine re-break of the same spot in Farm mode counts.
+    */
+   private boolean countBreak(class_2338 pos) {
+      if (this.countGuard > 0 && pos.equals(this.lastCountedPos)) {
+         return false;
+      }
+      this.lastCountedPos = pos.method_10062();
+      this.countGuard = 4;
+      return true;
    }
 
    /** @return false and Auto-Stops if there is no usable pickaxe. */
@@ -315,6 +339,22 @@ public class AutoMine extends Module implements HudModule {
       return !stack.method_7960() && matches(itemId(stack));
    }
 
+   /** Total placeable ore left to farm: off-hand plus the whole main inventory. */
+   private int countOre() {
+      int total = 0;
+      class_1799 off = mc.field_1724.method_6079();
+      if (this.isOre(off)) {
+         total += off.method_7947();
+      }
+      for (int i = 0; i < 36; ++i) {
+         class_1799 stack = mc.field_1724.method_31548().method_5438(i);
+         if (this.isOre(stack)) {
+            total += stack.method_7947();
+         }
+      }
+      return total;
+   }
+
    private boolean matches(String id) {
       // Must be an actual ore block, so "gold" can't match golden_carrot and
       // "copper" can't match raw_copper etc.
@@ -369,10 +409,8 @@ public class AutoMine extends Module implements HudModule {
             int pct = this.durabilityPct(pick);
             lines.add("§7Кирка " + bar(pct) + " §r" + pct + "%");
          }
-         class_1799 off = mc.field_1724.method_6079();
-         if (this.isOre(off)) {
-            lines.add("§7Руда: §r" + off.method_7947() + " шт");
-         }
+         int oreLeft = this.countOre();
+         lines.add("§7Осталось руды: §r" + oreLeft + " шт");
       }
 
       if (this.drops.isEmpty()) {
