@@ -139,20 +139,18 @@ public class AutoEnchant extends Module {
       this.maxLevel.clear();
       this.memo.clear();
 
+      // The target is strictly the item held in the main hand, so a different
+      // enchanted tool sitting in the inventory is never picked up by mistake.
       List<Node> nodes = new ArrayList<>();
-      Node sword = null;
+      class_1799 held = mc.field_1724.method_6047();
+      Node sword = this.isTool(held) ? new Node(true, 0, this.readEnchants(held)) : null;
       for (int i = PLAYER_SLOT_START; i <= PLAYER_SLOT_END; ++i) {
          class_1799 stack = h.method_7611(i).method_7677();
-         if (stack.method_7960()) {
-            continue;
-         }
-         if (this.isBook(stack)) {
+         if (!stack.method_7960() && this.isBook(stack)) {
             Map<String, Integer> ench = this.readEnchants(stack);
             if (!ench.isEmpty()) {
                nodes.add(new Node(false, 0, ench));
             }
-         } else if (sword == null && this.isTool(stack)) {
-            sword = new Node(true, 0, this.readEnchants(stack));
          }
       }
       if (sword != null) {
@@ -311,7 +309,7 @@ public class AutoEnchant extends Module {
          return;
       }
       String[] want = this.plan.get(this.planIndex);
-      int targetSlot = this.findSlot(h, want[0], -1);
+      int targetSlot = this.findTarget(h, want[0]);
       int sacrificeSlot = this.findSlot(h, want[1], targetSlot);
       if (targetSlot < 0 || sacrificeSlot < 0) {
          this.abort("не найден предмет для шага " + (this.planIndex + 1));
@@ -347,6 +345,21 @@ public class AutoEnchant extends Module {
       ++this.planIndex;
       this.phase = 0;
       this.timer = this.delay.get();
+   }
+
+   /** Target lookup that prefers the held hotbar slot, so a duplicate tool
+    *  elsewhere in the inventory is never grabbed for the first step. */
+   private int findTarget(class_1703 h, String sig) {
+      if (sig.startsWith("T|")) {
+         int hs = PLAYER_SLOT_END - 8 + mc.field_1724.method_31548().method_67532(); // hotbar block
+         if (hs >= PLAYER_SLOT_START && hs <= PLAYER_SLOT_END) {
+            class_1799 held = h.method_7611(hs).method_7677();
+            if (!held.method_7960() && this.stackSig(held).equals(sig)) {
+               return hs;
+            }
+         }
+      }
+      return this.findSlot(h, sig, -1);
    }
 
    /** First player-inventory slot whose enchant-only signature matches, != skip. */
@@ -404,22 +417,17 @@ public class AutoEnchant extends Module {
 
    // --- helpers -----------------------------------------------------------
 
-   /** True when the player inventory holds the target tool plus at least one book. */
+   /** True when the held item is a valid target and the inventory has a book. */
    private boolean hasWork() {
-      boolean tool = false;
-      boolean book = false;
+      if (!this.isTool(mc.field_1724.method_6047())) {
+         return false;
+      }
       for (int i = 0; i < 36; ++i) {
-         class_1799 stack = mc.field_1724.method_31548().method_5438(i);
-         if (stack.method_7960()) {
-            continue;
-         }
-         if (this.isBook(stack)) {
-            book = true;
-         } else if (this.isTool(stack)) {
-            tool = true;
+         if (this.isBook(mc.field_1724.method_31548().method_5438(i))) {
+            return true;
          }
       }
-      return tool && book;
+      return false;
    }
 
    private boolean isAnvilOpen() {
