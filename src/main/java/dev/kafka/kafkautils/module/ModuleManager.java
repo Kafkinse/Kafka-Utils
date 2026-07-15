@@ -15,7 +15,9 @@ import dev.kafka.kafkautils.module.modules.combat.AutoRaid;
 import dev.kafka.kafkautils.module.modules.combat.DpsMeter;
 import dev.kafka.kafkautils.module.modules.combat.EnemyStatus;
 import dev.kafka.kafkautils.module.modules.combat.GappleCount;
+import dev.kafka.kafkautils.module.modules.combat.AutoEat;
 import dev.kafka.kafkautils.module.modules.combat.AutoMine;
+import dev.kafka.kafkautils.module.modules.combat.AutoRepair;
 import dev.kafka.kafkautils.module.modules.combat.KillDeathTracker;
 import dev.kafka.kafkautils.module.modules.combat.MaceAlert;
 import dev.kafka.kafkautils.module.modules.combat.SelfDurabilityAlert;
@@ -57,6 +59,8 @@ public final class ModuleManager {
       register(new PearlTracker());
       register(new MaceAlert());
       register(new AutoMine());
+      register(new AutoRepair());
+      register(new AutoEat());
       register(new SelfDurabilityAlert());
       register(new EffectLogger());
       register(new TrialSpawnerEsp());

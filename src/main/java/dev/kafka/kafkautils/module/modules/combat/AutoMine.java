@@ -5,6 +5,7 @@ import dev.kafka.kafkautils.mixin.MinecraftClientAccessor;
 import dev.kafka.kafkautils.module.Category;
 import dev.kafka.kafkautils.module.HudModule;
 import dev.kafka.kafkautils.module.Module;
+import dev.kafka.kafkautils.module.ModuleManager;
 import dev.kafka.kafkautils.setting.BooleanSetting;
 import dev.kafka.kafkautils.setting.ModeSetting;
 import dev.kafka.kafkautils.setting.NumberSetting;
@@ -97,6 +98,13 @@ public class AutoMine extends Module implements HudModule {
       // Paused while a screen is open, so you can chat / open your inventory freely.
       if (mc.field_1755 != null) {
          this.note = "пауза (открыт экран)";
+         return;
+      }
+      // Yield to Auto Eat / Auto Repair so they don't fight over the held item.
+      AutoEat eat = ModuleManager.get(AutoEat.class);
+      AutoRepair repair = ModuleManager.get(AutoRepair.class);
+      if ((eat != null && eat.isBusy()) || (repair != null && repair.isBusy())) {
+         this.note = "пауза (еда/ремонт)";
          return;
       }
       // Fast Break / Fast Place: clear the vanilla per-action cooldowns each tick.
@@ -308,6 +316,11 @@ public class AutoMine extends Module implements HudModule {
    }
 
    private boolean matches(String id) {
+      // Must be an actual ore block, so "gold" can't match golden_carrot and
+      // "copper" can't match raw_copper etc.
+      if (!id.contains("ore") && !id.contains("debris")) {
+         return false;
+      }
       for (String t : this.targets.get().split("[,\\s]+")) {
          if (!t.isBlank() && id.contains(t.trim().toLowerCase(Locale.ROOT))) {
             return true;
