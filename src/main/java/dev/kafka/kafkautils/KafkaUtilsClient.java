@@ -91,6 +91,7 @@ public class KafkaUtilsClient implements ClientModInitializer {
             if (EnchantHelper.consumeOpen()) {
                client.method_1507(new EnchantHelperScreen());
             }
+            HudManager.tickChatDrag();
          }
       });
 

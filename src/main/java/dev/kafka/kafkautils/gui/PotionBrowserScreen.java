@@ -113,8 +113,13 @@ public class PotionBrowserScreen extends class_437 {
       }).method_46434(px + 4, by, bw, 18).method_46431());
       this.method_37063(class_4185.method_46430(class_2561.method_43470("§dЗакрепить"), (b) -> {
          PinnedOrder po = ModuleManager.get(PinnedOrder.class);
-         if (po != null && this.selected != null && this.brew != null) {
-            po.pin("Варка", this.brew.recipeLines(this.selected, this.tab, this.ext, this.upg));
+         BrewHelper bh = this.brew;
+         String pk = this.selected;
+         int type = this.tab;
+         boolean e = this.ext;
+         boolean u = this.upg;
+         if (po != null && pk != null && bh != null) {
+            po.pin("Варка", () -> bh.recipeLines(pk, type, e, u));
          }
       }).method_46434(px + 8 + bw, by, bw, 18).method_46431());
       this.method_37063(class_4185.method_46430(class_2561.method_43470("§7Открепить"), (b) -> {

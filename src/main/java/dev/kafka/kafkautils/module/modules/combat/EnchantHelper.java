@@ -517,21 +517,21 @@ public class EnchantHelper extends Module {
 
    private static Map<String, Preset> buildPresets() {
       Map<String, Preset> m = new LinkedHashMap<>();
-      m.put("helmet", preset("Топ шлем", "шлем", "protection", 4, "respiration", 3, "aqua_affinity", 1, "thorns", 3, "unbreaking", 3, "mending", 1));
-      m.put("chestplate", preset("Топ нагрудник", "нагрудник", "protection", 4, "thorns", 3, "unbreaking", 3, "mending", 1));
-      m.put("leggings", preset("Топ поножи", "поножи", "protection", 4, "swift_sneak", 3, "unbreaking", 3, "mending", 1));
-      m.put("boots", preset("Топ ботинки", "ботинки", "protection", 4, "feather_falling", 4, "depth_strider", 3, "soul_speed", 3, "unbreaking", 3, "mending", 1));
-      m.put("sword", preset("Топ меч", "меч", "sharpness", 5, "looting", 3, "sweeping_edge", 3, "fire_aspect", 2, "knockback", 2, "unbreaking", 3, "mending", 1));
-      m.put("pickaxe", preset("Топ кирка", "кирку", "efficiency", 5, "fortune", 3, "unbreaking", 3, "mending", 1));
-      m.put("axe", preset("Топ топор", "топор", "efficiency", 5, "sharpness", 5, "unbreaking", 3, "mending", 1));
-      m.put("shovel", preset("Топ лопата", "лопату", "efficiency", 5, "fortune", 3, "unbreaking", 3, "mending", 1));
-      m.put("bow", preset("Топ лук", "лук", "power", 5, "flame", 1, "punch", 2, "infinity", 1, "unbreaking", 3));
-      m.put("crossbow", preset("Топ арбалет", "арбалет", "quick_charge", 3, "multishot", 1, "unbreaking", 3, "mending", 1));
-      m.put("mace", preset("Топ булава", "булаву", "density", 5, "fire_aspect", 2, "wind_burst", 3, "unbreaking", 3, "mending", 1));
-      m.put("trident", preset("Топ трезубец", "трезубец", "impaling", 5, "loyalty", 3, "channeling", 1, "unbreaking", 3, "mending", 1));
-      m.put("fishing_rod", preset("Топ удочка", "удочку", "luck_of_the_sea", 3, "lure", 3, "unbreaking", 3, "mending", 1));
-      m.put("elytra", preset("Топ элитры", "элитры", "unbreaking", 3, "mending", 1));
-      m.put("shield", preset("Топ щит", "щит", "unbreaking", 3, "mending", 1));
+      m.put("helmet", preset("Топ Шлем", "шлем", "protection", 4, "respiration", 3, "aqua_affinity", 1, "thorns", 3, "unbreaking", 3, "mending", 1));
+      m.put("chestplate", preset("Топ Нагрудник", "нагрудник", "protection", 4, "thorns", 3, "unbreaking", 3, "mending", 1));
+      m.put("leggings", preset("Топ Поножи", "поножи", "protection", 4, "swift_sneak", 3, "unbreaking", 3, "mending", 1));
+      m.put("boots", preset("Топ Ботинки", "ботинки", "protection", 4, "feather_falling", 4, "depth_strider", 3, "soul_speed", 3, "unbreaking", 3, "mending", 1));
+      m.put("sword", preset("Топ Меч", "меч", "sharpness", 5, "looting", 3, "sweeping_edge", 3, "fire_aspect", 2, "knockback", 2, "unbreaking", 3, "mending", 1));
+      m.put("pickaxe", preset("Топ Кирка", "кирку", "efficiency", 5, "fortune", 3, "unbreaking", 3, "mending", 1));
+      m.put("axe", preset("Топ Топор", "топор", "efficiency", 5, "sharpness", 5, "unbreaking", 3, "mending", 1));
+      m.put("shovel", preset("Топ Лопата", "лопату", "efficiency", 5, "fortune", 3, "unbreaking", 3, "mending", 1));
+      m.put("bow", preset("Топ Лук", "лук", "power", 5, "flame", 1, "punch", 2, "infinity", 1, "unbreaking", 3));
+      m.put("crossbow", preset("Топ Арбалет", "арбалет", "quick_charge", 3, "multishot", 1, "unbreaking", 3, "mending", 1));
+      m.put("mace", preset("Топ Булава", "булаву", "density", 5, "fire_aspect", 2, "wind_burst", 3, "unbreaking", 3, "mending", 1));
+      m.put("trident", preset("Топ Трезубец", "трезубец", "impaling", 5, "loyalty", 3, "channeling", 1, "unbreaking", 3, "mending", 1));
+      m.put("fishing_rod", preset("Топ Удочка", "удочку", "luck_of_the_sea", 3, "lure", 3, "unbreaking", 3, "mending", 1));
+      m.put("elytra", preset("Топ Элитры", "элитры", "unbreaking", 3, "mending", 1));
+      m.put("shield", preset("Топ Щит", "щит", "unbreaking", 3, "mending", 1));
       return m;
    }
 

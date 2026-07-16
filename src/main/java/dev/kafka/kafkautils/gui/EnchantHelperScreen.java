@@ -57,8 +57,10 @@ public class EnchantHelperScreen extends class_437 {
       }).method_46434(PANEL_X, by, 90, 18).method_46431());
       this.method_37063(class_4185.method_46430(class_2561.method_43470("§dЗакрепить"), (b) -> {
          PinnedOrder po = ModuleManager.get(PinnedOrder.class);
-         if (po != null && !this.currentLines.isEmpty()) {
-            po.pin("Зачарование", this.currentLines);
+         String key = this.selectedKey;
+         EnchantHelper h = this.helper;
+         if (po != null && key != null && h != null) {
+            po.pin("Зачарование", () -> h.presetLines(key)); // live: updates as you grab the item/books
          }
       }).method_46434(PANEL_X + 96, by, 96, 18).method_46431());
       this.method_37063(class_4185.method_46430(class_2561.method_43470("§7Открепить"), (b) -> {
