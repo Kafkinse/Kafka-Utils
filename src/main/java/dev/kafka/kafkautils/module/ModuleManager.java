@@ -35,6 +35,7 @@ import dev.kafka.kafkautils.module.modules.render.HealthESP;
 import dev.kafka.kafkautils.module.modules.render.InventoryViewer;
 import dev.kafka.kafkautils.module.modules.render.ItemESP;
 import dev.kafka.kafkautils.module.modules.render.OminousVaultHighlighter;
+import dev.kafka.kafkautils.module.modules.render.PinnedOrder;
 import dev.kafka.kafkautils.module.modules.render.PlayerInspect;
 import dev.kafka.kafkautils.module.modules.render.FriendOverlay;
 import dev.kafka.kafkautils.module.modules.render.TrialSpawnerEsp;
@@ -78,6 +79,7 @@ public final class ModuleManager {
       register(new InventoryViewer());
       register(new ItemESP());
       register(new ActiveModsHud());
+      register(new PinnedOrder());
       register(new FriendOverlay());
       register(new FriendList());
       register(new CoordinateShare());

@@ -56,78 +56,89 @@ public class EnchantHelper extends Module {
    private final Map<String, class_6880<class_1887>> entryById = new HashMap<>();
    private final Map<String, Integer> memo = new HashMap<>();
    private List<Step> plan;
+   private static boolean openRequested;
 
    public EnchantHelper() {
       super("Enchant Helper", "Подсказывает самый дешёвый порядок соединения на наковальне (/kafka enchant).", Category.FARMING);
    }
 
    protected void onEnable() {
-      this.printHints();
+      if (mc.field_1724 != null) {
+         requestOpen(); // open the enchant menu on the next client tick
+      }
    }
 
-   /** Computes and prints the cheapest combine order for the held tool + books. */
+   public static void requestOpen() {
+      openRequested = true;
+   }
+
+   public static boolean consumeOpen() {
+      boolean r = openRequested;
+      openRequested = false;
+      return r;
+   }
+
+   /** Prints the cheapest combine order for the held tool + all matching books. */
    public void printHints() {
+      for (String line : this.hintLines()) {
+         ChatUtil.info(line);
+      }
+   }
+
+   public List<String> hintLines() {
+      List<String> out = new ArrayList<>();
       if (mc.field_1724 == null) {
-         return;
+         return out;
       }
       class_1799 held = mc.field_1724.method_6047();
       if (!isTool(held)) {
-         ChatUtil.info("§d[Зачарование] §7возьми зачаровываемый предмет в руку.");
-         return;
+         out.add("§d[Зачарование] §7возьми зачаровываемый предмет в руку.");
+         return out;
       }
-
-      this.anvilCost.clear();
-      this.maxLevel.clear();
-      this.display.clear();
-      this.entryById.clear();
-      this.memo.clear();
-
+      this.reset();
       List<String> want = this.parseWanted();
       List<Node> nodes = new ArrayList<>();
       String toolName = held.method_7964().getString();
-      nodes.add(new Node(true, 0, this.readEnchants(held))); // tool keeps its own enchants
+      nodes.add(new Node(true, 0, this.readEnchants(held)));
       int skipped = 0;
       for (int i = 0; i < 36; ++i) {
          skipped += this.addBook(nodes, mc.field_1724.method_31548().method_5438(i), want);
       }
       skipped += this.addBook(nodes, mc.field_1724.method_6079(), want);
-
       if (nodes.size() < 2) {
-         ChatUtil.info("§d[Зачарование] §7положи подходящие книги зачарований в инвентарь"
+         out.add("§d[Зачарование] §7положи подходящие книги зачарований в инвентарь"
             + (want.isEmpty() ? "." : " (по фильтру 'Wanted')."));
-         return;
+         return out;
       }
-      if (nodes.size() > MAX_ITEMS) {
-         ChatUtil.info("§d[Зачарование] §7слишком много книг (>" + MAX_ITEMS + "), сузь список в 'Wanted'.");
-         return;
-      }
-
-      this.emitPlan(nodes, toolName, skipped > 0 ? " §8(книг вне фильтра: " + skipped + ")" : "");
+      out.addAll(this.planLines(nodes, toolName, skipped > 0 ? " §8(книг вне фильтра: " + skipped + ")" : ""));
+      return out;
    }
 
    /** Prints a preset's cheapest order plus which books are still missing. */
    public void printPreset(String key) {
+      for (String line : this.presetLines(key)) {
+         ChatUtil.info(line);
+      }
+   }
+
+   public List<String> presetLines(String key) {
+      List<String> out = new ArrayList<>();
       if (mc.field_1724 == null) {
-         return;
+         return out;
       }
       String kk = key.toLowerCase(Locale.ROOT);
       Preset p = PRESETS.get(kk);
       if (p == null) {
-         ChatUtil.info("§d[Заготовка] §7неизвестно «" + key + "». Доступно: §r" + String.join(", ", PRESETS.keySet()));
-         return;
+         out.add("§d[Заготовка] §7неизвестно «" + key + "». Доступно: §r" + String.join(", ", PRESETS.keySet()));
+         return out;
       }
       class_1799 held = mc.field_1724.method_6047();
       if (!itemMatches(held, kk)) {
-         ChatUtil.info("§d[Заготовка] §7возьми §r" + p.item + " §7в руку.");
-         return;
+         out.add("§d[Заготовка] §7возьми §r" + p.item + " §7в руку.");
+         return out;
       }
 
-      this.anvilCost.clear();
-      this.maxLevel.clear();
-      this.display.clear();
-      this.entryById.clear();
-      this.memo.clear();
-
+      this.reset();
       Map<String, Integer> toolEnch = this.readEnchants(held);
       Map<String, Integer> bestBook = new HashMap<>();
       for (int i = 0; i < 36; ++i) {
@@ -142,7 +153,6 @@ public class EnchantHelper extends Module {
             missing.add(this.enchName(e.getKey()) + (e.getValue() > 1 ? " " + RenderUtil.roman(e.getValue()) : ""));
          }
       }
-
       List<Node> nodes = new ArrayList<>();
       nodes.add(new Node(true, 0, new HashMap<>(toolEnch)));
       for (Map.Entry<String, Integer> e : p.ench.entrySet()) {
@@ -153,18 +163,22 @@ public class EnchantHelper extends Module {
             nodes.add(new Node(false, 0, one));
          }
       }
-
-      ChatUtil.info("§d§l— Заготовка: " + p.ru + " —");
-      if (missing.isEmpty()) {
-         ChatUtil.info("§aВсе нужные книги есть.");
-      } else {
-         ChatUtil.info("§eНе хватает книг: §c" + String.join("§7, §c", missing));
-      }
+      out.add("§d§l— Заготовка: " + p.ru + " —");
+      out.add(missing.isEmpty() ? "§aВсе нужные книги есть." : "§eНе хватает книг: §c" + String.join("§7, §c", missing));
       if (nodes.size() < 2) {
-         ChatUtil.info(missing.isEmpty() ? "§aПредмет уже полностью зачарован." : "§7Собери недостающие книги и повтори.");
-         return;
+         out.add(missing.isEmpty() ? "§aПредмет уже полностью зачарован." : "§7Собери недостающие книги и повтори.");
+         return out;
       }
-      this.emitPlan(nodes, held.method_7964().getString(), "");
+      out.addAll(this.planLines(nodes, held.method_7964().getString(), ""));
+      return out;
+   }
+
+   private void reset() {
+      this.anvilCost.clear();
+      this.maxLevel.clear();
+      this.display.clear();
+      this.entryById.clear();
+      this.memo.clear();
    }
 
    private void collectBook(class_1799 stack, Map<String, Integer> best) {
@@ -175,39 +189,36 @@ public class EnchantHelper extends Module {
       }
    }
 
-   /** Shared tail: conflict check, optimise, and print the ordered steps. */
-   private void emitPlan(List<Node> nodes, String toolName, String note) {
-      if (nodes.size() < 2) {
-         ChatUtil.info("§d[Зачарование] §7нечего соединять — нет подходящих книг.");
-         return;
-      }
+   /** Shared: conflict check, optimise, and format the ordered steps as lines. */
+   private List<String> planLines(List<Node> nodes, String toolName, String note) {
+      List<String> out = new ArrayList<>();
       if (nodes.size() > MAX_ITEMS) {
-         ChatUtil.info("§d[Зачарование] §7слишком много книг (>" + MAX_ITEMS + ").");
-         return;
+         out.add("§d[Зачарование] §7слишком много книг (>" + MAX_ITEMS + ").");
+         return out;
       }
       String conflict = this.findConflict(nodes);
       if (conflict != null) {
-         ChatUtil.info("§d[Зачарование] §cнесовместимо: §r" + conflict + " §7— оставь одну (укажи нужные в 'Wanted').");
-         return;
+         out.add("§d[Зачарование] §cнесовместимо: §r" + conflict + " §7— оставь одну (укажи нужные в 'Wanted').");
+         return out;
       }
       int best = this.solve(nodes);
       if (best >= INF) {
-         ChatUtil.info("§d[Зачарование] §7какой-то шаг дороже §c" + this.maxCost.get() + " ур.§7 — возьми свежий предмет и чистые книги (по 1 чару).");
-         return;
+         out.add("§d[Зачарование] §7какой-то шаг дороже §c" + this.maxCost.get() + " ур.§7 — возьми свежий предмет и чистые книги.");
+         return out;
       }
       this.plan = new ArrayList<>();
       this.reconstruct(nodes);
-
-      ChatUtil.info("§d§l— Порядок зачарования —");
-      ChatUtil.info("§7Предмет: §r" + toolName + " §7| Соединений: §r" + this.plan.size() + note);
+      out.add("§d§l— Порядок зачарования —");
+      out.add("§7Предмет: §r" + toolName + " §7| Соединений: §r" + this.plan.size() + note);
       int n = 1;
       for (Step s : this.plan) {
          String target = s.targetSword ? "§b" + toolName + this.label(s.targetEnch) : "§dкнига" + this.label(s.targetEnch);
          String sac = "§dкнига" + this.label(s.sacEnch);
-         ChatUtil.info("§7" + n + ". §r" + target + " §7+ " + sac + " §7— §a" + s.cost + " ур.");
+         out.add("§7" + n + ". §r" + target + " §7+ " + sac + " §7— §a" + s.cost + " ур.");
          ++n;
       }
-      ChatUtil.info("§7Итого: §a" + best + " ур. §7(держи столько уровней перед началом)");
+      out.add("§7Итого: §a" + best + " ур. §7(держи столько уровней перед началом)");
+      return out;
    }
 
    public List<String> presetKeys() {

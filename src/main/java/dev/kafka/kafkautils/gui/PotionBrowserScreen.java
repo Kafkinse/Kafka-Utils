@@ -2,6 +2,7 @@ package dev.kafka.kafkautils.gui;
 
 import dev.kafka.kafkautils.module.ModuleManager;
 import dev.kafka.kafkautils.module.modules.combat.BrewHelper;
+import dev.kafka.kafkautils.module.modules.render.PinnedOrder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -100,6 +101,28 @@ public class PotionBrowserScreen extends class_437 {
       this.search.method_47404(class_2561.method_43470("§7Поиск зелья…"));
       this.search.method_1863((v) -> this.searchText = v);
       this.method_37063(this.search);
+
+      // Action buttons under the recipe panel: print to chat / pin / unpin.
+      int px = this.panelX();
+      int bw = Math.max(50, (this.field_22789 - px - 16) / 3);
+      int by = this.field_22790 - 24;
+      this.method_37063(class_4185.method_46430(class_2561.method_43470("§aВ чат"), (b) -> {
+         if (this.selected != null && this.brew != null) {
+            this.brew.printRecipe(this.selected, this.tab, this.ext, this.upg);
+         }
+      }).method_46434(px + 4, by, bw, 18).method_46431());
+      this.method_37063(class_4185.method_46430(class_2561.method_43470("§dЗакрепить"), (b) -> {
+         PinnedOrder po = ModuleManager.get(PinnedOrder.class);
+         if (po != null && this.selected != null && this.brew != null) {
+            po.pin("Варка", this.brew.recipeLines(this.selected, this.tab, this.ext, this.upg));
+         }
+      }).method_46434(px + 8 + bw, by, bw, 18).method_46431());
+      this.method_37063(class_4185.method_46430(class_2561.method_43470("§7Открепить"), (b) -> {
+         PinnedOrder po = ModuleManager.get(PinnedOrder.class);
+         if (po != null) {
+            po.unpin();
+         }
+      }).method_46434(px + 12 + 2 * bw, by, bw, 18).method_46431());
    }
 
    private void buildStacks() {

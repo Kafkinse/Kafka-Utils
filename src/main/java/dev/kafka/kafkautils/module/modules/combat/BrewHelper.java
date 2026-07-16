@@ -75,6 +75,13 @@ public class BrewHelper extends Module {
       }
    }
 
+   /** Prints the given recipe to chat (used by the GUI's "В чат" button). */
+   public void printRecipe(String key, int type, boolean ext, boolean upg) {
+      for (String line : this.recipeLines(key, type, ext, upg)) {
+         ChatUtil.info(line);
+      }
+   }
+
    /** Builds the brewing-order lines for the given potion + variant (used by chat and the GUI). */
    public List<String> recipeLines(String key, int type, boolean ext, boolean upg) {
       List<String> out = new ArrayList<>();

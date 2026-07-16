@@ -4,6 +4,7 @@ import com.mojang.brigadier.LiteralMessage;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import dev.kafka.kafkautils.config.ConfigManager;
 import dev.kafka.kafkautils.gui.ClickGuiScreen;
+import dev.kafka.kafkautils.gui.EnchantHelperScreen;
 import dev.kafka.kafkautils.gui.PotionBrowserScreen;
 import dev.kafka.kafkautils.hud.HudManager;
 import dev.kafka.kafkautils.module.Module;
@@ -86,6 +87,9 @@ public class KafkaUtilsClient implements ClientModInitializer {
             ModuleManager.onTick();
             if (BrewHelper.consumeOpen()) {
                client.method_1507(new PotionBrowserScreen());
+            }
+            if (EnchantHelper.consumeOpen()) {
+               client.method_1507(new EnchantHelperScreen());
             }
          }
       });
