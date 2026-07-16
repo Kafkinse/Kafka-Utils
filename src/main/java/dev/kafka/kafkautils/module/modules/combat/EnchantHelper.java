@@ -3,13 +3,16 @@ package dev.kafka.kafkautils.module.modules.combat;
 import dev.kafka.kafkautils.module.Category;
 import dev.kafka.kafkautils.module.Module;
 import dev.kafka.kafkautils.setting.NumberSetting;
+import dev.kafka.kafkautils.setting.StringSetting;
 import dev.kafka.kafkautils.util.ChatUtil;
 import dev.kafka.kafkautils.util.RenderUtil;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import net.minecraft.class_1799;
 import net.minecraft.class_1887;
@@ -19,25 +22,34 @@ import net.minecraft.class_7923;
 import net.minecraft.class_9304;
 
 /**
- * Enchanting advisor. Reads the tool held in the main hand plus every enchanted
- * book in the inventory and prints the cheapest anvil-combine order to chat —
- * the same result as the offline enchant-order calculator, computed locally with
- * an exact branch-and-bound (no network, no automation). Trigger it by toggling
- * the module on or with {@code /kafka enchant}.
+ * Enchanting advisor. Reads the tool held in the main hand plus enchanted books
+ * in the inventory and prints the cheapest anvil-combine order to chat — the
+ * same result as the offline enchant-order calculator, computed locally with an
+ * exact branch-and-bound (no network, no automation). Trigger by toggling the
+ * module on or with {@code /kafka enchant}.
+ *
+ * <p>You can restrict which enchantments to use with the <b>Wanted</b> setting
+ * (like ticking boxes on the website): list enchantment names/ids separated by
+ * commas, e.g. {@code density,unbreaking,mending} — leave it empty to use every
+ * book found. Mutually-exclusive picks (e.g. Breach + Density on a mace, or
+ * Sharpness + Smite on a sword) are detected and reported instead of producing
+ * an impossible plan.
  *
  * <p>Cost model (verified against the game): for a combine of target + sacrifice,
- * {@code cost = (2^tWork-1) + (2^sWork-1) + Σ max(1, anvilCost/2)·level} over the
- * sacrifice's enchantments; result work = {@code max(tWork, sWork)+1}. Inputs are
- * assumed fresh (zero prior work), as a calculator does.
+ * {@code cost = (2^tWork-1) + (2^sWork-1) + Σ max(1, anvilCost/2)·level}; result
+ * work = {@code max(tWork, sWork)+1}. Inputs are assumed fresh (zero prior work).
  */
 public class EnchantHelper extends Module {
    private static final int MAX_ITEMS = 10; // guard against factorial blow-up
    private static final int INF = 1_000_000;
 
    private final NumberSetting maxCost = this.add(new NumberSetting("Max Cost/Step", 39, 1, 40, 1));
+   private final StringSetting wanted = this.add(new StringSetting("Wanted", ""));
 
    private final Map<String, Integer> anvilCost = new HashMap<>();
    private final Map<String, Integer> maxLevel = new HashMap<>();
+   private final Map<String, String> display = new HashMap<>();
+   private final Map<String, class_6880<class_1887>> entryById = new HashMap<>();
    private final Map<String, Integer> memo = new HashMap<>();
    private List<Step> plan;
 
@@ -62,34 +74,34 @@ public class EnchantHelper extends Module {
 
       this.anvilCost.clear();
       this.maxLevel.clear();
+      this.display.clear();
+      this.entryById.clear();
       this.memo.clear();
 
+      List<String> want = this.parseWanted();
       List<Node> nodes = new ArrayList<>();
       String toolName = held.method_7964().getString();
-      nodes.add(new Node(true, 0, this.readEnchants(held)));
+      nodes.add(new Node(true, 0, this.readEnchants(held))); // tool keeps its own enchants
+      int skipped = 0;
       for (int i = 0; i < 36; ++i) {
-         class_1799 stack = mc.field_1724.method_31548().method_5438(i);
-         if (isBook(stack)) {
-            Map<String, Integer> ench = this.readEnchants(stack);
-            if (!ench.isEmpty()) {
-               nodes.add(new Node(false, 0, ench));
-            }
-         }
+         skipped += this.addBook(nodes, mc.field_1724.method_31548().method_5438(i), want);
       }
-      class_1799 off = mc.field_1724.method_6079();
-      if (isBook(off)) {
-         Map<String, Integer> ench = this.readEnchants(off);
-         if (!ench.isEmpty()) {
-            nodes.add(new Node(false, 0, ench));
-         }
-      }
+      skipped += this.addBook(nodes, mc.field_1724.method_6079(), want);
 
       if (nodes.size() < 2) {
-         ChatUtil.info("§d[Зачарование] §7положи книги зачарований в инвентарь.");
+         ChatUtil.info("§d[Зачарование] §7положи подходящие книги зачарований в инвентарь"
+            + (want.isEmpty() ? "." : " (по фильтру 'Wanted')."));
          return;
       }
       if (nodes.size() > MAX_ITEMS) {
-         ChatUtil.info("§d[Зачарование] §7слишком много книг (>" + MAX_ITEMS + "), убери лишние.");
+         ChatUtil.info("§d[Зачарование] §7слишком много книг (>" + MAX_ITEMS + "), сузь список в 'Wanted'.");
+         return;
+      }
+
+      String conflict = this.findConflict(nodes);
+      if (conflict != null) {
+         ChatUtil.info("§d[Зачарование] §cнесовместимо: §r" + conflict
+            + " §7— оставь одну (укажи нужные в 'Wanted').");
          return;
       }
 
@@ -102,15 +114,76 @@ public class EnchantHelper extends Module {
       this.reconstruct(nodes);
 
       ChatUtil.info("§d§l— Порядок зачарования —");
-      ChatUtil.info("§7Предмет: §r" + toolName + " §7| Соединений: §r" + this.plan.size());
+      ChatUtil.info("§7Предмет: §r" + toolName + " §7| Соединений: §r" + this.plan.size()
+         + (skipped > 0 ? " §8(книг вне фильтра: " + skipped + ")" : ""));
       int n = 1;
       for (Step s : this.plan) {
-         String target = s.targetSword ? "§b" + toolName + label(s.targetEnch) : "§dкнига" + label(s.targetEnch);
-         String sac = "§dкнига" + label(s.sacEnch);
+         String target = s.targetSword ? "§b" + toolName + this.label(s.targetEnch) : "§dкнига" + this.label(s.targetEnch);
+         String sac = "§dкнига" + this.label(s.sacEnch);
          ChatUtil.info("§7" + n + ". §r" + target + " §7+ " + sac + " §7— §a" + s.cost + " ур.");
          ++n;
       }
       ChatUtil.info("§7Итого: §a" + best + " ур. §7(держи столько уровней перед началом)");
+   }
+
+   /** Adds a book node if it passes the Wanted filter; returns 1 if filtered out. */
+   private int addBook(List<Node> nodes, class_1799 stack, List<String> want) {
+      if (!isBook(stack)) {
+         return 0;
+      }
+      Map<String, Integer> ench = this.readEnchants(stack);
+      if (ench.isEmpty()) {
+         return 0;
+      }
+      if (!want.isEmpty() && !this.matchesWanted(ench, want)) {
+         return 1;
+      }
+      nodes.add(new Node(false, 0, ench));
+      return 0;
+   }
+
+   private List<String> parseWanted() {
+      List<String> out = new ArrayList<>();
+      for (String t : this.wanted.get().split("[,]+")) {
+         String s = t.trim().toLowerCase(Locale.ROOT);
+         if (!s.isEmpty()) {
+            out.add(s);
+         }
+      }
+      return out;
+   }
+
+   /** A book matches if any of its enchant ids or display names contains a keyword. */
+   private boolean matchesWanted(Map<String, Integer> ench, List<String> want) {
+      for (String id : ench.keySet()) {
+         String name = this.display.getOrDefault(id, id).toLowerCase(Locale.ROOT);
+         for (String kw : want) {
+            if (id.contains(kw) || name.contains(kw)) {
+               return true;
+            }
+         }
+      }
+      return false;
+   }
+
+   /** @return "A + B" of the first mutually-exclusive pair among all enchants, or null. */
+   private String findConflict(List<Node> nodes) {
+      LinkedHashSet<String> ids = new LinkedHashSet<>();
+      for (Node n : nodes) {
+         ids.addAll(n.ench.keySet());
+      }
+      List<String> list = new ArrayList<>(ids);
+      for (int i = 0; i < list.size(); ++i) {
+         for (int j = i + 1; j < list.size(); ++j) {
+            class_6880<class_1887> a = this.entryById.get(list.get(i));
+            class_6880<class_1887> b = this.entryById.get(list.get(j));
+            if (a != null && b != null && !class_1890.method_8201(List.of(a), b)) {
+               return this.display.getOrDefault(list.get(i), list.get(i)) + " §c+ §r"
+                  + this.display.getOrDefault(list.get(j), list.get(j));
+            }
+         }
+      }
+      return null;
    }
 
    // --- optimizer ---------------------------------------------------------
@@ -237,23 +310,27 @@ public class EnchantHelper extends Module {
       Map<String, Integer> m = new HashMap<>();
       class_9304 comp = class_1890.method_57532(stack);
       for (Object2IntMap.Entry<class_6880<class_1887>> e : comp.method_57539()) {
-         class_1887 ench = (class_1887)e.getKey().comp_349();
-         String name = ench.comp_2686().getString();
-         m.put(name, e.getIntValue());
-         this.anvilCost.put(name, ench.method_58446());
-         this.maxLevel.put(name, ench.method_8183());
+         class_6880<class_1887> entry = e.getKey();
+         class_1887 ench = (class_1887)entry.comp_349();
+         String id = entry.method_55840().toLowerCase(Locale.ROOT); // e.g. "minecraft:sharpness"
+         m.put(id, e.getIntValue());
+         this.anvilCost.put(id, ench.method_58446());
+         this.maxLevel.put(id, ench.method_8183());
+         this.display.put(id, ench.comp_2686().getString());
+         this.entryById.put(id, entry);
       }
       return m;
    }
 
-   /** "(Sharpness V, Mending)" — empty enchant maps render as "". */
-   private static String label(Map<String, Integer> ench) {
+   /** "(Sharpness V, Mending)" using display names; empty maps render as "". */
+   private String label(Map<String, Integer> ench) {
       if (ench.isEmpty()) {
          return "";
       }
       List<String> parts = new ArrayList<>(ench.size());
       for (Map.Entry<String, Integer> e : ench.entrySet()) {
-         parts.add(e.getKey() + (e.getValue() > 1 ? " " + RenderUtil.roman(e.getValue()) : ""));
+         String name = this.display.getOrDefault(e.getKey(), e.getKey());
+         parts.add(name + (e.getValue() > 1 ? " " + RenderUtil.roman(e.getValue()) : ""));
       }
       Collections.sort(parts);
       return " §7(" + String.join(", ", parts) + "§7)§r";
@@ -271,7 +348,7 @@ public class EnchantHelper extends Module {
       return class_7923.field_41178.method_10221(stack.method_7909()).method_12832();
    }
 
-   /** Planning node: an item's enchantments plus its accumulated anvil work count. */
+   /** Planning node: an item's enchantments (by id) plus its anvil work count. */
    private static final class Node {
       final boolean sword;
       final int work;
