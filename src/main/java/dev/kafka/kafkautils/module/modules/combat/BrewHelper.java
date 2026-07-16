@@ -79,22 +79,22 @@ public class BrewHelper extends Module {
       ChatUtil.info("§7Топливо: §rОгненный порошок §7в левый слот.");
 
       int n = 1;
-      ChatUtil.info("§7" + n++ + ". §rНалей §eводу §7в 3 нижних слота.");
+      ChatUtil.info("§7" + n++ + ". §rНалей §eпузырёк воды ×3 §7в нижние слоты.");
       ChatUtil.info(step(n++, "Адский нарост", "Мутное зелье"));
       for (String[] s : b.steps) {
          ChatUtil.info(step(n++, s[0], s[1]));
       }
       if (ext) {
-         ChatUtil.info(step(n++, "Красная пыль", "удлинённое"));
+         ChatUtil.info(step(n++, "Редстоун", "удлинённое"));
       }
       if (upg) {
-         ChatUtil.info(step(n++, "Светящаяся пыль", "усиленное (II)"));
+         ChatUtil.info(step(n++, "Светокаменная пыль", "усиленное (II)"));
       }
       if (type == SPLASH || type == LINGERING) {
          ChatUtil.info(step(n++, "Порох", "взрывное"));
       }
       if (type == LINGERING) {
-         ChatUtil.info(step(n++, "Дыхание дракона", "оседающее"));
+         ChatUtil.info(step(n++, "Драконье дыхание", "оседающее"));
       }
 
       ChatUtil.info("§aГотово: " + typeRu.toLowerCase(Locale.ROOT) + " зелье «" + b.ru + "»" + modRu + ".");
@@ -112,24 +112,24 @@ public class BrewHelper extends Module {
    private static Map<String, Brew> buildBrews() {
       Map<String, Brew> m = new LinkedHashMap<>();
       // key, ru, canExtend, canUpgrade, then post-Awkward (ingredient, result) pairs
-      m.put("fire_resistance", brew("Огнестойкость", true, false, "Магмовый крем", "Огнестойкость"));
+      m.put("fire_resistance", brew("Огнестойкость", true, false, "Сгусток магмы", "Огнестойкость"));
       m.put("night_vision", brew("Ночное зрение", true, false, "Золотая морковь", "Ночное зрение"));
-      m.put("invisibility", brew("Невидимость", true, false, "Золотая морковь", "Ночное зрение", "Ферментированный паучий глаз", "Невидимость"));
+      m.put("invisibility", brew("Невидимость", true, false, "Золотая морковь", "Ночное зрение", "Приготовленный паучий глаз", "Невидимость"));
       m.put("swiftness", brew("Скорость", true, true, "Сахар", "Скорость"));
-      m.put("slowness", brew("Замедление", true, true, "Сахар", "Скорость", "Ферментированный паучий глаз", "Замедление"));
+      m.put("slowness", brew("Медлительность", true, true, "Сахар", "Скорость", "Приготовленный паучий глаз", "Медлительность"));
       m.put("strength", brew("Сила", true, true, "Огненный порошок", "Сила"));
-      m.put("weakness", brew("Слабость", true, false, "Ферментированный паучий глаз", "Слабость"));
-      m.put("healing", brew("Исцеление", false, true, "Блестящий арбуз", "Исцеление"));
-      m.put("harming", brew("Урон", false, true, "Блестящий арбуз", "Исцеление", "Ферментированный паучий глаз", "Урон"));
-      m.put("poison", brew("Яд", true, true, "Паучий глаз", "Яд"));
+      m.put("weakness", brew("Слабость", true, false, "Приготовленный паучий глаз", "Слабость"));
+      m.put("healing", brew("Лечение", false, true, "Сверкающий ломтик арбуза", "Лечение"));
+      m.put("harming", brew("Урон", false, true, "Сверкающий ломтик арбуза", "Лечение", "Приготовленный паучий глаз", "Урон"));
+      m.put("poison", brew("Отравление", true, true, "Паучий глаз", "Отравление"));
       m.put("regeneration", brew("Регенерация", true, true, "Слеза гаста", "Регенерация"));
       m.put("leaping", brew("Прыгучесть", true, true, "Кроличья лапка", "Прыгучесть"));
-      m.put("slow_falling", brew("Медленное падение", true, false, "Мембрана фантома", "Медленное падение"));
+      m.put("slow_falling", brew("Плавное падение", true, false, "Мембрана фантома", "Плавное падение"));
       m.put("water_breathing", brew("Подводное дыхание", true, false, "Иглобрюх", "Подводное дыхание"));
-      m.put("turtle_master", brew("Черепаший мастер", true, true, "Черепаший панцирь", "Черепаший мастер"));
-      m.put("wind_charged", brew("Заряд ветра", false, false, "Стержень бриза", "Заряд ветра"));
-      m.put("weaving", brew("Плетение", false, false, "Паутина", "Плетение"));
-      m.put("oozing", brew("Сочение", false, false, "Блок слизи", "Сочение"));
+      m.put("turtle_master", brew("Черепашья мощь", true, true, "Черепаший панцирь", "Черепашья мощь"));
+      m.put("wind_charged", brew("Ветровой заряд", false, false, "Стержень бриза", "Ветровой заряд"));
+      m.put("weaving", brew("Ткачество", false, false, "Паутина", "Ткачество"));
+      m.put("oozing", brew("Склизкость", false, false, "Блок слизи", "Склизкость"));
       m.put("infested", brew("Заражение", false, false, "Камень", "Заражение"));
       return m;
    }
