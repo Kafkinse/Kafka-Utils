@@ -161,7 +161,9 @@ public class BrewHelper extends Module {
       if (entry == null) {
          return "";
       }
-      double mult = type == SPLASH ? 0.75 : type == LINGERING ? 0.25 : 1.0;
+      // Java Edition: splash keeps the full duration (the ¾ reduction is Bedrock
+      // only); lingering shows ¼ of the drinkable duration.
+      double mult = type == LINGERING ? 0.25 : 1.0;
       List<String> parts = new ArrayList<>();
       for (class_1293 eff : entry.comp_349().method_8049()) {
          String name = ((class_1291)eff.method_5579().comp_349()).method_5560().getString();
