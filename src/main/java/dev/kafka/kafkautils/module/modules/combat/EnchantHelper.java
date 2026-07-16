@@ -110,14 +110,15 @@ public class EnchantHelper extends Module {
       if (mc.field_1724 == null) {
          return;
       }
-      Preset p = PRESETS.get(key.toLowerCase(Locale.ROOT));
+      String kk = key.toLowerCase(Locale.ROOT);
+      Preset p = PRESETS.get(kk);
       if (p == null) {
          ChatUtil.info("§d[Заготовка] §7неизвестно «" + key + "». Доступно: §r" + String.join(", ", PRESETS.keySet()));
          return;
       }
       class_1799 held = mc.field_1724.method_6047();
-      if (!isTool(held)) {
-         ChatUtil.info("§d[Заготовка] §7возьми предмет («" + p.ru + "») в руку.");
+      if (!itemMatches(held, kk)) {
+         ChatUtil.info("§d[Заготовка] §7возьми §r" + p.item + " §7в руку.");
          return;
       }
 
@@ -138,7 +139,7 @@ public class EnchantHelper extends Module {
       for (Map.Entry<String, Integer> e : p.ench.entrySet()) {
          int have = Math.max(toolEnch.getOrDefault(e.getKey(), 0), bestBook.getOrDefault(e.getKey(), 0));
          if (have < e.getValue()) {
-            missing.add(enchRu(e.getKey()) + (e.getValue() > 1 ? " " + RenderUtil.roman(e.getValue()) : ""));
+            missing.add(this.enchName(e.getKey()) + (e.getValue() > 1 ? " " + RenderUtil.roman(e.getValue()) : ""));
          }
       }
 
@@ -157,7 +158,7 @@ public class EnchantHelper extends Module {
       if (missing.isEmpty()) {
          ChatUtil.info("§aВсе нужные книги есть.");
       } else {
-         ChatUtil.info("§eНе хватает книг: §r" + String.join("§7, §r", missing));
+         ChatUtil.info("§eНе хватает книг: §c" + String.join("§7, §c", missing));
       }
       if (nodes.size() < 2) {
          ChatUtil.info(missing.isEmpty() ? "§aПредмет уже полностью зачарован." : "§7Собери недостающие книги и повтори.");
@@ -218,8 +219,10 @@ public class EnchantHelper extends Module {
       return p == null ? key : p.ru;
    }
 
-   private static String enchRu(String id) {
-      return ENCH_RU.getOrDefault(id, id);
+   /** Preferred display name: curated RU dictionary, then the game's own name, then id. */
+   private String enchName(String id) {
+      String ru = ENCH_RU.get(id);
+      return ru != null ? ru : this.display.getOrDefault(id, id);
    }
 
    /** Adds a book node if it passes the Wanted filter; returns 1 if filtered out. */
@@ -425,8 +428,7 @@ public class EnchantHelper extends Module {
       }
       List<String> parts = new ArrayList<>(ench.size());
       for (Map.Entry<String, Integer> e : ench.entrySet()) {
-         String name = this.display.getOrDefault(e.getKey(), e.getKey());
-         parts.add(name + (e.getValue() > 1 ? " " + RenderUtil.roman(e.getValue()) : ""));
+         parts.add(this.enchName(e.getKey()) + (e.getValue() > 1 ? " " + RenderUtil.roman(e.getValue()) : ""));
       }
       Collections.sort(parts);
       return " §7(" + String.join(", ", parts) + "§7)§r";
@@ -440,6 +442,15 @@ public class EnchantHelper extends Module {
       return !stack.method_7960() && !isBook(stack) && (stack.method_7923() || stack.method_7942());
    }
 
+   /** Whether the held stack is the item a preset targets (e.g. any *_boots for "boots"). */
+   private static boolean itemMatches(class_1799 held, String key) {
+      if (held.method_7960()) {
+         return false;
+      }
+      String id = itemId(held);
+      return id.equals(key) || id.endsWith("_" + key);
+   }
+
    private static String itemId(class_1799 stack) {
       return class_7923.field_41178.method_10221(stack.method_7909()).method_12832();
    }
@@ -448,74 +459,88 @@ public class EnchantHelper extends Module {
 
    private static Map<String, String> buildNames() {
       Map<String, String> m = new HashMap<>();
-      m.put("minecraft:protection", "Защита");
-      m.put("minecraft:feather_falling", "Мягкое падение");
-      m.put("minecraft:respiration", "Подводное дыхание");
-      m.put("minecraft:aqua_affinity", "Подводник");
-      m.put("minecraft:depth_strider", "Скороход");
-      m.put("minecraft:soul_speed", "Скорость душ");
-      m.put("minecraft:swift_sneak", "Крадущийся");
-      m.put("minecraft:thorns", "Шипы");
       m.put("minecraft:unbreaking", "Прочность");
       m.put("minecraft:mending", "Починка");
+      m.put("minecraft:vanishing_curse", "Проклятие утраты");
+      m.put("minecraft:protection", "Защита");
+      m.put("minecraft:fire_protection", "Огнеупорность");
+      m.put("minecraft:blast_protection", "Взрывоустойчивость");
+      m.put("minecraft:projectile_protection", "Защита от снарядов");
+      m.put("minecraft:thorns", "Шипы");
+      m.put("minecraft:respiration", "Подводное дыхание");
+      m.put("minecraft:aqua_affinity", "Подводник");
+      m.put("minecraft:swift_sneak", "Проворство");
+      m.put("minecraft:feather_falling", "Невесомость");
+      m.put("minecraft:depth_strider", "Подводная ходьба");
+      m.put("minecraft:frost_walker", "Ледоход");
+      m.put("minecraft:soul_speed", "Скорость души");
+      m.put("minecraft:binding_curse", "Проклятие несъёмности");
       m.put("minecraft:sharpness", "Острота");
-      m.put("minecraft:knockback", "Отбрасывание");
+      m.put("minecraft:smite", "Небесная кара");
+      m.put("minecraft:bane_of_arthropods", "Бич членистоногих");
       m.put("minecraft:fire_aspect", "Заговор огня");
       m.put("minecraft:looting", "Добыча");
+      m.put("minecraft:knockback", "Отдача");
       m.put("minecraft:sweeping_edge", "Разящий клинок");
-      m.put("minecraft:efficiency", "Эффективность");
-      m.put("minecraft:fortune", "Удача");
-      m.put("minecraft:power", "Сила");
-      m.put("minecraft:punch", "Отталкивание");
-      m.put("minecraft:flame", "Пламя");
-      m.put("minecraft:infinity", "Бесконечность");
-      m.put("minecraft:quick_charge", "Быстрая перезарядка");
-      m.put("minecraft:multishot", "Мультивыстрел");
       m.put("minecraft:density", "Плотность");
+      m.put("minecraft:breach", "Пробитие");
       m.put("minecraft:wind_burst", "Порыв ветра");
-      m.put("minecraft:impaling", "Пронзающий");
+      m.put("minecraft:power", "Сила");
+      m.put("minecraft:punch", "Откидывание");
+      m.put("minecraft:flame", "Воспламенение");
+      m.put("minecraft:infinity", "Бесконечность");
+      m.put("minecraft:multishot", "Тройной выстрел");
+      m.put("minecraft:piercing", "Пронзающая стрела");
+      m.put("minecraft:quick_charge", "Быстрая перезарядка");
       m.put("minecraft:loyalty", "Верность");
+      m.put("minecraft:riptide", "Тягун");
       m.put("minecraft:channeling", "Громовержец");
-      m.put("minecraft:luck_of_the_sea", "Морская удача");
+      m.put("minecraft:impaling", "Пронзатель");
+      m.put("minecraft:efficiency", "Эффективность");
+      m.put("minecraft:silk_touch", "Шёлковое касание");
+      m.put("minecraft:fortune", "Удача");
+      m.put("minecraft:luck_of_the_sea", "Везучий рыбак");
       m.put("minecraft:lure", "Приманка");
       return m;
    }
 
    private static Map<String, Preset> buildPresets() {
       Map<String, Preset> m = new LinkedHashMap<>();
-      m.put("helmet", preset("Топ шлем", "protection", 4, "respiration", 3, "aqua_affinity", 1, "thorns", 3, "unbreaking", 3, "mending", 1));
-      m.put("chestplate", preset("Топ нагрудник", "protection", 4, "thorns", 3, "unbreaking", 3, "mending", 1));
-      m.put("leggings", preset("Топ поножи", "protection", 4, "swift_sneak", 3, "unbreaking", 3, "mending", 1));
-      m.put("boots", preset("Топ ботинки", "protection", 4, "feather_falling", 4, "depth_strider", 3, "soul_speed", 3, "unbreaking", 3, "mending", 1));
-      m.put("sword", preset("Топ меч", "sharpness", 5, "looting", 3, "sweeping_edge", 3, "fire_aspect", 2, "knockback", 2, "unbreaking", 3, "mending", 1));
-      m.put("pickaxe", preset("Топ кирка", "efficiency", 5, "fortune", 3, "unbreaking", 3, "mending", 1));
-      m.put("axe", preset("Топ топор", "efficiency", 5, "sharpness", 5, "unbreaking", 3, "mending", 1));
-      m.put("shovel", preset("Топ лопата", "efficiency", 5, "fortune", 3, "unbreaking", 3, "mending", 1));
-      m.put("bow", preset("Топ лук", "power", 5, "flame", 1, "punch", 2, "infinity", 1, "unbreaking", 3));
-      m.put("crossbow", preset("Топ арбалет", "quick_charge", 3, "multishot", 1, "unbreaking", 3, "mending", 1));
-      m.put("mace", preset("Топ булава", "density", 5, "fire_aspect", 2, "wind_burst", 3, "unbreaking", 3, "mending", 1));
-      m.put("trident", preset("Топ трезубец", "impaling", 5, "loyalty", 3, "channeling", 1, "unbreaking", 3, "mending", 1));
-      m.put("fishing_rod", preset("Топ удочка", "luck_of_the_sea", 3, "lure", 3, "unbreaking", 3, "mending", 1));
-      m.put("elytra", preset("Топ элитры", "unbreaking", 3, "mending", 1));
-      m.put("shield", preset("Топ щит", "unbreaking", 3, "mending", 1));
+      m.put("helmet", preset("Топ шлем", "шлем", "protection", 4, "respiration", 3, "aqua_affinity", 1, "thorns", 3, "unbreaking", 3, "mending", 1));
+      m.put("chestplate", preset("Топ нагрудник", "нагрудник", "protection", 4, "thorns", 3, "unbreaking", 3, "mending", 1));
+      m.put("leggings", preset("Топ поножи", "поножи", "protection", 4, "swift_sneak", 3, "unbreaking", 3, "mending", 1));
+      m.put("boots", preset("Топ ботинки", "ботинки", "protection", 4, "feather_falling", 4, "depth_strider", 3, "soul_speed", 3, "unbreaking", 3, "mending", 1));
+      m.put("sword", preset("Топ меч", "меч", "sharpness", 5, "looting", 3, "sweeping_edge", 3, "fire_aspect", 2, "knockback", 2, "unbreaking", 3, "mending", 1));
+      m.put("pickaxe", preset("Топ кирка", "кирку", "efficiency", 5, "fortune", 3, "unbreaking", 3, "mending", 1));
+      m.put("axe", preset("Топ топор", "топор", "efficiency", 5, "sharpness", 5, "unbreaking", 3, "mending", 1));
+      m.put("shovel", preset("Топ лопата", "лопату", "efficiency", 5, "fortune", 3, "unbreaking", 3, "mending", 1));
+      m.put("bow", preset("Топ лук", "лук", "power", 5, "flame", 1, "punch", 2, "infinity", 1, "unbreaking", 3));
+      m.put("crossbow", preset("Топ арбалет", "арбалет", "quick_charge", 3, "multishot", 1, "unbreaking", 3, "mending", 1));
+      m.put("mace", preset("Топ булава", "булаву", "density", 5, "fire_aspect", 2, "wind_burst", 3, "unbreaking", 3, "mending", 1));
+      m.put("trident", preset("Топ трезубец", "трезубец", "impaling", 5, "loyalty", 3, "channeling", 1, "unbreaking", 3, "mending", 1));
+      m.put("fishing_rod", preset("Топ удочка", "удочку", "luck_of_the_sea", 3, "lure", 3, "unbreaking", 3, "mending", 1));
+      m.put("elytra", preset("Топ элитры", "элитры", "unbreaking", 3, "mending", 1));
+      m.put("shield", preset("Топ щит", "щит", "unbreaking", 3, "mending", 1));
       return m;
    }
 
-   /** Builds a preset from a Russian label and (short-id, level) pairs. */
-   private static Preset preset(String ru, Object... pairs) {
+   /** Builds a preset from labels and (short-id, level) pairs. */
+   private static Preset preset(String ru, String item, Object... pairs) {
       LinkedHashMap<String, Integer> ench = new LinkedHashMap<>();
       for (int i = 0; i + 1 < pairs.length; i += 2) {
          ench.put("minecraft:" + pairs[i], (Integer)pairs[i + 1]);
       }
-      return new Preset(ru, ench);
+      return new Preset(ru, item, ench);
    }
 
    private static final class Preset {
       final String ru;
+      final String item;
       final Map<String, Integer> ench;
 
-      Preset(String ru, Map<String, Integer> ench) {
+      Preset(String ru, String item, Map<String, Integer> ench) {
          this.ru = ru;
+         this.item = item;
          this.ench = ench;
       }
    }
