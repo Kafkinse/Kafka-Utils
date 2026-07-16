@@ -177,10 +177,7 @@ public class KafkaUtilsClient implements ClientModInitializer {
                return 1;
             })))
             .then(ClientCommandManager.literal("enchant").executes(c -> {
-               EnchantHelper eh = (EnchantHelper)ModuleManager.get(EnchantHelper.class);
-               if (eh != null) {
-                  eh.printHints();
-               }
+               EnchantHelper.requestOpen();
                return 1;
             }).then(ClientCommandManager.argument("preset", StringArgumentType.word()).suggests((ctx, b) -> {
                EnchantHelper eh = (EnchantHelper)ModuleManager.get(EnchantHelper.class);
