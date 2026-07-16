@@ -14,6 +14,7 @@ import dev.kafka.kafkautils.module.modules.chat.CoordinateShare;
 import dev.kafka.kafkautils.module.modules.chat.FriendChat;
 import dev.kafka.kafkautils.module.modules.chat.FriendHighlight;
 import dev.kafka.kafkautils.module.modules.chat.FriendList;
+import dev.kafka.kafkautils.module.modules.combat.BrewHelper;
 import dev.kafka.kafkautils.module.modules.combat.EnchantHelper;
 import dev.kafka.kafkautils.util.Render3D;
 import net.fabricmc.api.ClientModInitializer;
@@ -187,7 +188,33 @@ public class KafkaUtilsClient implements ClientModInitializer {
                   eh.printPreset(StringArgumentType.getString(c, "preset"));
                }
                return 1;
-            }))));
+            })))
+            .then(ClientCommandManager.literal("brew").then(ClientCommandManager.argument("potion", StringArgumentType.word()).suggests((ctx, b) -> {
+               BrewHelper bh = (BrewHelper)ModuleManager.get(BrewHelper.class);
+               if (bh != null) {
+                  for (String k : bh.brewKeys()) {
+                     b.suggest(k, new LiteralMessage(bh.brewTooltip(k)));
+                  }
+               }
+               return b.buildFuture();
+            }).executes(c -> {
+               BrewHelper bh = (BrewHelper)ModuleManager.get(BrewHelper.class);
+               if (bh != null) {
+                  bh.printBrew(StringArgumentType.getString(c, "potion"), "");
+               }
+               return 1;
+            }).then(ClientCommandManager.argument("options", StringArgumentType.greedyString()).suggests((ctx, b) -> {
+               for (String s : new String[]{"splash", "lingering", "long", "strong", "splash long", "splash strong", "lingering strong"}) {
+                  b.suggest(s);
+               }
+               return b.buildFuture();
+            }).executes(c -> {
+               BrewHelper bh = (BrewHelper)ModuleManager.get(BrewHelper.class);
+               if (bh != null) {
+                  bh.printBrew(StringArgumentType.getString(c, "potion"), StringArgumentType.getString(c, "options"));
+               }
+               return 1;
+            })))));
       });
 
       ClientPlayConnectionEvents.JOIN.register((ClientPlayConnectionEvents.Join)(handler, sender, client) -> HudManager.onWorldJoin());

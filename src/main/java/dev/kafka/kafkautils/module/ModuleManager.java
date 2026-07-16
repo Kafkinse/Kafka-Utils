@@ -12,6 +12,7 @@ import dev.kafka.kafkautils.module.modules.chat.StaffList;
 import dev.kafka.kafkautils.module.modules.chat.StaffNotify;
 import dev.kafka.kafkautils.module.modules.combat.ArmorAlert;
 import dev.kafka.kafkautils.module.modules.combat.AutoRaid;
+import dev.kafka.kafkautils.module.modules.combat.BrewHelper;
 import dev.kafka.kafkautils.module.modules.combat.DpsMeter;
 import dev.kafka.kafkautils.module.modules.combat.EnchantHelper;
 import dev.kafka.kafkautils.module.modules.combat.EnemyStatus;
@@ -65,6 +66,7 @@ public final class ModuleManager {
       register(new AutoEat());
       register(new AutoReplant());
       register(new EnchantHelper());
+      register(new BrewHelper());
       register(new SelfDurabilityAlert());
       register(new EffectLogger());
       register(new TrialSpawnerEsp());
