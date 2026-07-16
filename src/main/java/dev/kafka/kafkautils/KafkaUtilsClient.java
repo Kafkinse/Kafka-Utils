@@ -3,6 +3,7 @@ package dev.kafka.kafkautils;
 import com.mojang.brigadier.LiteralMessage;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import dev.kafka.kafkautils.config.ConfigManager;
+import dev.kafka.kafkautils.gui.AutoTeleportScreen;
 import dev.kafka.kafkautils.gui.ClickGuiScreen;
 import dev.kafka.kafkautils.gui.EnchantHelperScreen;
 import dev.kafka.kafkautils.gui.PotionBrowserScreen;
@@ -11,6 +12,7 @@ import dev.kafka.kafkautils.module.Module;
 import dev.kafka.kafkautils.module.ModuleManager;
 import dev.kafka.kafkautils.module.WorldRenderModule;
 import dev.kafka.kafkautils.module.modules.chat.AntiSpam;
+import dev.kafka.kafkautils.module.modules.chat.AutoTeleport;
 import dev.kafka.kafkautils.module.modules.chat.ChatPing;
 import dev.kafka.kafkautils.module.modules.chat.CoordinateShare;
 import dev.kafka.kafkautils.module.modules.chat.FriendChat;
@@ -91,6 +93,9 @@ public class KafkaUtilsClient implements ClientModInitializer {
             if (EnchantHelper.consumeOpen()) {
                client.method_1507(new EnchantHelperScreen());
             }
+            if (AutoTeleport.consumeOpen()) {
+               client.method_1507(new AutoTeleportScreen());
+            }
             HudManager.tickChatDrag();
          }
       });
@@ -123,6 +128,10 @@ public class KafkaUtilsClient implements ClientModInitializer {
          FriendChat fc = (FriendChat)ModuleManager.get(FriendChat.class);
          if (fc != null && fc.handleIncoming(message.getString())) {
             return false;
+         }
+         AutoTeleport tp = (AutoTeleport)ModuleManager.get(AutoTeleport.class);
+         if (tp != null) {
+            tp.handleMessage(message.getString());
          }
          AntiSpam as = (AntiSpam)ModuleManager.get(AntiSpam.class);
          return as == null || as.allow(message);
@@ -223,7 +232,46 @@ public class KafkaUtilsClient implements ClientModInitializer {
                   bh.printBrew(StringArgumentType.getString(c, "potion"), StringArgumentType.getString(c, "options"));
                }
                return 1;
-            })))));
+            }))))
+            .then(ClientCommandManager.literal("tpa").executes(c -> {
+               AutoTeleport.requestOpen();
+               return 1;
+            }).then(ClientCommandManager.literal("add").then(ClientCommandManager.argument("name", StringArgumentType.word()).suggests((ctx, b) -> {
+               AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class);
+               if (t != null) {
+                  for (String p : t.onlinePlayers()) {
+                     b.suggest(p);
+                  }
+               }
+               return b.buildFuture();
+            }).executes(c -> {
+               String name = StringArgumentType.getString(c, "name");
+               AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class);
+               boolean ok = t != null && t.add(name);
+               c.getSource().sendFeedback(class_2561.method_43470(ok ? "§aРазрешён телепорт от: §r" + name : "§7Уже в списке или ошибка"));
+               return 1;
+            })))
+            .then(ClientCommandManager.literal("remove").then(ClientCommandManager.argument("name", StringArgumentType.word()).suggests((ctx, b) -> {
+               AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class);
+               if (t != null) {
+                  for (String p : t.allowedList()) {
+                     b.suggest(p);
+                  }
+               }
+               return b.buildFuture();
+            }).executes(c -> {
+               String name = StringArgumentType.getString(c, "name");
+               AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class);
+               boolean ok = t != null && t.remove(name);
+               c.getSource().sendFeedback(class_2561.method_43470(ok ? "§cУбран: §r" + name : "§7Не найден"));
+               return 1;
+            })))
+            .then(ClientCommandManager.literal("list").executes(c -> {
+               AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class);
+               String list = t == null || t.allowedList().isEmpty() ? "§7пусто" : "§r" + String.join(", ", t.allowedList());
+               c.getSource().sendFeedback(class_2561.method_43470("§dРазрешённые (TPA): " + list));
+               return 1;
+            }))));
       });
 
       ClientPlayConnectionEvents.JOIN.register((ClientPlayConnectionEvents.Join)(handler, sender, client) -> HudManager.onWorldJoin());

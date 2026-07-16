@@ -1,6 +1,7 @@
 package dev.kafka.kafkautils.module;
 
 import dev.kafka.kafkautils.module.modules.chat.AntiSpam;
+import dev.kafka.kafkautils.module.modules.chat.AutoTeleport;
 import dev.kafka.kafkautils.module.modules.chat.ChatPing;
 import dev.kafka.kafkautils.module.modules.chat.FriendChat;
 import dev.kafka.kafkautils.module.modules.chat.FriendHighlight;
@@ -86,6 +87,7 @@ public final class ModuleManager {
       register(new FriendHighlight());
       register(new FriendChat());
       register(new PlayerLogger());
+      register(new AutoTeleport());
       register(new StaffNotify());
       register(new PlayerTracker());
       register(new StaffList());
