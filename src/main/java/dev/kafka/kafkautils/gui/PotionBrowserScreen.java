@@ -7,8 +7,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import net.minecraft.class_1792;
 import net.minecraft.class_1799;
-import net.minecraft.class_1802;
 import net.minecraft.class_1842;
 import net.minecraft.class_1844;
 import net.minecraft.class_2561;
@@ -104,22 +104,33 @@ public class PotionBrowserScreen extends class_437 {
       if (!this.stacks.isEmpty()) {
          return;
       }
+      class_1792 drink = itemOf("potion");
+      class_1792 splash = itemOf("splash_potion");
+      class_1792 linger = itemOf("lingering_potion");
+      if (drink == null || splash == null || linger == null) {
+         return;
+      }
+      class_1792[] items = {drink, splash, linger};
       for (String key : this.keys) {
-         @SuppressWarnings("unchecked")
-         class_6880<class_1842> entry = (class_6880<class_1842>)class_7923.field_41179
-            .method_10223(class_2960.method_60656(key)).orElse(null);
+         class_6880<class_1842> entry = potionEntry(key);
          class_1799[] arr = new class_1799[3];
-         if (entry != null) {
-            arr[0] = class_1844.method_57400(class_1802.field_8574, entry);
-            arr[1] = class_1844.method_57400(class_1802.field_8436, entry);
-            arr[2] = class_1844.method_57400(class_1802.field_8150, entry);
-         } else {
-            arr[0] = new class_1799(class_1802.field_8574);
-            arr[1] = new class_1799(class_1802.field_8436);
-            arr[2] = new class_1799(class_1802.field_8150);
+         for (int t = 0; t < 3; ++t) {
+            arr[t] = entry != null ? class_1844.method_57400(items[t], entry) : new class_1799(items[t]);
          }
          this.stacks.put(key, arr);
       }
+   }
+
+   /** Looks up an item by id via the item registry (no reliance on field ids). */
+   private static class_1792 itemOf(String id) {
+      Object ref = class_7923.field_41178.method_10223(class_2960.method_60656(id)).orElse(null);
+      return ref == null ? null : (class_1792)((class_6880<?>)ref).comp_349();
+   }
+
+   @SuppressWarnings("unchecked")
+   private static class_6880<class_1842> potionEntry(String key) {
+      Object ref = class_7923.field_41179.method_10223(class_2960.method_60656(key)).orElse(null);
+      return (class_6880<class_1842>)ref;
    }
 
    private List<String> filtered() {
