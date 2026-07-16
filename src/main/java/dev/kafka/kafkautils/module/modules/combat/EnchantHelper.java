@@ -10,6 +10,7 @@ import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -42,6 +43,9 @@ import net.minecraft.class_9304;
 public class EnchantHelper extends Module {
    private static final int MAX_ITEMS = 10; // guard against factorial blow-up
    private static final int INF = 1_000_000;
+
+   private static final Map<String, String> ENCH_RU = buildNames();
+   private static final Map<String, Preset> PRESETS = buildPresets();
 
    private final NumberSetting maxCost = this.add(new NumberSetting("Max Cost/Step", 39, 1, 40, 1));
    private final StringSetting wanted = this.add(new StringSetting("Wanted", ""));
@@ -98,13 +102,93 @@ public class EnchantHelper extends Module {
          return;
       }
 
-      String conflict = this.findConflict(nodes);
-      if (conflict != null) {
-         ChatUtil.info("§d[Зачарование] §cнесовместимо: §r" + conflict
-            + " §7— оставь одну (укажи нужные в 'Wanted').");
+      this.emitPlan(nodes, toolName, skipped > 0 ? " §8(книг вне фильтра: " + skipped + ")" : "");
+   }
+
+   /** Prints a preset's cheapest order plus which books are still missing. */
+   public void printPreset(String key) {
+      if (mc.field_1724 == null) {
+         return;
+      }
+      Preset p = PRESETS.get(key.toLowerCase(Locale.ROOT));
+      if (p == null) {
+         ChatUtil.info("§d[Заготовка] §7неизвестно «" + key + "». Доступно: §r" + String.join(", ", PRESETS.keySet()));
+         return;
+      }
+      class_1799 held = mc.field_1724.method_6047();
+      if (!isTool(held)) {
+         ChatUtil.info("§d[Заготовка] §7возьми предмет («" + p.ru + "») в руку.");
          return;
       }
 
+      this.anvilCost.clear();
+      this.maxLevel.clear();
+      this.display.clear();
+      this.entryById.clear();
+      this.memo.clear();
+
+      Map<String, Integer> toolEnch = this.readEnchants(held);
+      Map<String, Integer> bestBook = new HashMap<>();
+      for (int i = 0; i < 36; ++i) {
+         this.collectBook(mc.field_1724.method_31548().method_5438(i), bestBook);
+      }
+      this.collectBook(mc.field_1724.method_6079(), bestBook);
+
+      List<String> missing = new ArrayList<>();
+      for (Map.Entry<String, Integer> e : p.ench.entrySet()) {
+         int have = Math.max(toolEnch.getOrDefault(e.getKey(), 0), bestBook.getOrDefault(e.getKey(), 0));
+         if (have < e.getValue()) {
+            missing.add(enchRu(e.getKey()) + (e.getValue() > 1 ? " " + RenderUtil.roman(e.getValue()) : ""));
+         }
+      }
+
+      List<Node> nodes = new ArrayList<>();
+      nodes.add(new Node(true, 0, new HashMap<>(toolEnch)));
+      for (Map.Entry<String, Integer> e : p.ench.entrySet()) {
+         int bookLvl = bestBook.getOrDefault(e.getKey(), 0);
+         if (bookLvl > 0 && bookLvl > toolEnch.getOrDefault(e.getKey(), 0)) {
+            Map<String, Integer> one = new HashMap<>();
+            one.put(e.getKey(), bookLvl);
+            nodes.add(new Node(false, 0, one));
+         }
+      }
+
+      ChatUtil.info("§d§l— Заготовка: " + p.ru + " —");
+      if (missing.isEmpty()) {
+         ChatUtil.info("§aВсе нужные книги есть.");
+      } else {
+         ChatUtil.info("§eНе хватает книг: §r" + String.join("§7, §r", missing));
+      }
+      if (nodes.size() < 2) {
+         ChatUtil.info(missing.isEmpty() ? "§aПредмет уже полностью зачарован." : "§7Собери недостающие книги и повтори.");
+         return;
+      }
+      this.emitPlan(nodes, held.method_7964().getString(), "");
+   }
+
+   private void collectBook(class_1799 stack, Map<String, Integer> best) {
+      if (isBook(stack)) {
+         for (Map.Entry<String, Integer> e : this.readEnchants(stack).entrySet()) {
+            best.merge(e.getKey(), e.getValue(), Math::max);
+         }
+      }
+   }
+
+   /** Shared tail: conflict check, optimise, and print the ordered steps. */
+   private void emitPlan(List<Node> nodes, String toolName, String note) {
+      if (nodes.size() < 2) {
+         ChatUtil.info("§d[Зачарование] §7нечего соединять — нет подходящих книг.");
+         return;
+      }
+      if (nodes.size() > MAX_ITEMS) {
+         ChatUtil.info("§d[Зачарование] §7слишком много книг (>" + MAX_ITEMS + ").");
+         return;
+      }
+      String conflict = this.findConflict(nodes);
+      if (conflict != null) {
+         ChatUtil.info("§d[Зачарование] §cнесовместимо: §r" + conflict + " §7— оставь одну (укажи нужные в 'Wanted').");
+         return;
+      }
       int best = this.solve(nodes);
       if (best >= INF) {
          ChatUtil.info("§d[Зачарование] §7какой-то шаг дороже §c" + this.maxCost.get() + " ур.§7 — возьми свежий предмет и чистые книги (по 1 чару).");
@@ -114,8 +198,7 @@ public class EnchantHelper extends Module {
       this.reconstruct(nodes);
 
       ChatUtil.info("§d§l— Порядок зачарования —");
-      ChatUtil.info("§7Предмет: §r" + toolName + " §7| Соединений: §r" + this.plan.size()
-         + (skipped > 0 ? " §8(книг вне фильтра: " + skipped + ")" : ""));
+      ChatUtil.info("§7Предмет: §r" + toolName + " §7| Соединений: §r" + this.plan.size() + note);
       int n = 1;
       for (Step s : this.plan) {
          String target = s.targetSword ? "§b" + toolName + this.label(s.targetEnch) : "§dкнига" + this.label(s.targetEnch);
@@ -124,6 +207,19 @@ public class EnchantHelper extends Module {
          ++n;
       }
       ChatUtil.info("§7Итого: §a" + best + " ур. §7(держи столько уровней перед началом)");
+   }
+
+   public List<String> presetKeys() {
+      return new ArrayList<>(PRESETS.keySet());
+   }
+
+   public String presetTooltip(String key) {
+      Preset p = PRESETS.get(key);
+      return p == null ? key : p.ru;
+   }
+
+   private static String enchRu(String id) {
+      return ENCH_RU.getOrDefault(id, id);
    }
 
    /** Adds a book node if it passes the Wanted filter; returns 1 if filtered out. */
@@ -346,6 +442,82 @@ public class EnchantHelper extends Module {
 
    private static String itemId(class_1799 stack) {
       return class_7923.field_41178.method_10221(stack.method_7909()).method_12832();
+   }
+
+   // --- presets -----------------------------------------------------------
+
+   private static Map<String, String> buildNames() {
+      Map<String, String> m = new HashMap<>();
+      m.put("minecraft:protection", "Защита");
+      m.put("minecraft:feather_falling", "Мягкое падение");
+      m.put("minecraft:respiration", "Подводное дыхание");
+      m.put("minecraft:aqua_affinity", "Подводник");
+      m.put("minecraft:depth_strider", "Скороход");
+      m.put("minecraft:soul_speed", "Скорость душ");
+      m.put("minecraft:swift_sneak", "Крадущийся");
+      m.put("minecraft:thorns", "Шипы");
+      m.put("minecraft:unbreaking", "Прочность");
+      m.put("minecraft:mending", "Починка");
+      m.put("minecraft:sharpness", "Острота");
+      m.put("minecraft:knockback", "Отбрасывание");
+      m.put("minecraft:fire_aspect", "Заговор огня");
+      m.put("minecraft:looting", "Добыча");
+      m.put("minecraft:sweeping_edge", "Разящий клинок");
+      m.put("minecraft:efficiency", "Эффективность");
+      m.put("minecraft:fortune", "Удача");
+      m.put("minecraft:power", "Сила");
+      m.put("minecraft:punch", "Отталкивание");
+      m.put("minecraft:flame", "Пламя");
+      m.put("minecraft:infinity", "Бесконечность");
+      m.put("minecraft:quick_charge", "Быстрая перезарядка");
+      m.put("minecraft:multishot", "Мультивыстрел");
+      m.put("minecraft:density", "Плотность");
+      m.put("minecraft:wind_burst", "Порыв ветра");
+      m.put("minecraft:impaling", "Пронзающий");
+      m.put("minecraft:loyalty", "Верность");
+      m.put("minecraft:channeling", "Громовержец");
+      m.put("minecraft:luck_of_the_sea", "Морская удача");
+      m.put("minecraft:lure", "Приманка");
+      return m;
+   }
+
+   private static Map<String, Preset> buildPresets() {
+      Map<String, Preset> m = new LinkedHashMap<>();
+      m.put("helmet", preset("Топ шлем", "protection", 4, "respiration", 3, "aqua_affinity", 1, "thorns", 3, "unbreaking", 3, "mending", 1));
+      m.put("chestplate", preset("Топ нагрудник", "protection", 4, "thorns", 3, "unbreaking", 3, "mending", 1));
+      m.put("leggings", preset("Топ поножи", "protection", 4, "swift_sneak", 3, "unbreaking", 3, "mending", 1));
+      m.put("boots", preset("Топ ботинки", "protection", 4, "feather_falling", 4, "depth_strider", 3, "soul_speed", 3, "unbreaking", 3, "mending", 1));
+      m.put("sword", preset("Топ меч", "sharpness", 5, "looting", 3, "sweeping_edge", 3, "fire_aspect", 2, "knockback", 2, "unbreaking", 3, "mending", 1));
+      m.put("pickaxe", preset("Топ кирка", "efficiency", 5, "fortune", 3, "unbreaking", 3, "mending", 1));
+      m.put("axe", preset("Топ топор", "efficiency", 5, "sharpness", 5, "unbreaking", 3, "mending", 1));
+      m.put("shovel", preset("Топ лопата", "efficiency", 5, "fortune", 3, "unbreaking", 3, "mending", 1));
+      m.put("bow", preset("Топ лук", "power", 5, "flame", 1, "punch", 2, "infinity", 1, "unbreaking", 3));
+      m.put("crossbow", preset("Топ арбалет", "quick_charge", 3, "multishot", 1, "unbreaking", 3, "mending", 1));
+      m.put("mace", preset("Топ булава", "density", 5, "fire_aspect", 2, "wind_burst", 3, "unbreaking", 3, "mending", 1));
+      m.put("trident", preset("Топ трезубец", "impaling", 5, "loyalty", 3, "channeling", 1, "unbreaking", 3, "mending", 1));
+      m.put("fishing_rod", preset("Топ удочка", "luck_of_the_sea", 3, "lure", 3, "unbreaking", 3, "mending", 1));
+      m.put("elytra", preset("Топ элитры", "unbreaking", 3, "mending", 1));
+      m.put("shield", preset("Топ щит", "unbreaking", 3, "mending", 1));
+      return m;
+   }
+
+   /** Builds a preset from a Russian label and (short-id, level) pairs. */
+   private static Preset preset(String ru, Object... pairs) {
+      LinkedHashMap<String, Integer> ench = new LinkedHashMap<>();
+      for (int i = 0; i + 1 < pairs.length; i += 2) {
+         ench.put("minecraft:" + pairs[i], (Integer)pairs[i + 1]);
+      }
+      return new Preset(ru, ench);
+   }
+
+   private static final class Preset {
+      final String ru;
+      final Map<String, Integer> ench;
+
+      Preset(String ru, Map<String, Integer> ench) {
+         this.ru = ru;
+         this.ench = ench;
+      }
    }
 
    /** Planning node: an item's enchantments (by id) plus its anvil work count. */

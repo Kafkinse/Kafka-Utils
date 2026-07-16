@@ -1,5 +1,6 @@
 package dev.kafka.kafkautils;
 
+import com.mojang.brigadier.LiteralMessage;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import dev.kafka.kafkautils.config.ConfigManager;
 import dev.kafka.kafkautils.gui.ClickGuiScreen;
@@ -172,7 +173,21 @@ public class KafkaUtilsClient implements ClientModInitializer {
                   eh.printHints();
                }
                return 1;
-            })));
+            }).then(ClientCommandManager.argument("preset", StringArgumentType.word()).suggests((ctx, b) -> {
+               EnchantHelper eh = (EnchantHelper)ModuleManager.get(EnchantHelper.class);
+               if (eh != null) {
+                  for (String k : eh.presetKeys()) {
+                     b.suggest(k, new LiteralMessage(eh.presetTooltip(k)));
+                  }
+               }
+               return b.buildFuture();
+            }).executes(c -> {
+               EnchantHelper eh = (EnchantHelper)ModuleManager.get(EnchantHelper.class);
+               if (eh != null) {
+                  eh.printPreset(StringArgumentType.getString(c, "preset"));
+               }
+               return 1;
+            }))));
       });
 
       ClientPlayConnectionEvents.JOIN.register((ClientPlayConnectionEvents.Join)(handler, sender, client) -> HudManager.onWorldJoin());
