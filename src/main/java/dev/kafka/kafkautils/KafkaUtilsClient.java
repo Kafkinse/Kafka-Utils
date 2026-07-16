@@ -13,6 +13,7 @@ import dev.kafka.kafkautils.module.modules.chat.CoordinateShare;
 import dev.kafka.kafkautils.module.modules.chat.FriendChat;
 import dev.kafka.kafkautils.module.modules.chat.FriendHighlight;
 import dev.kafka.kafkautils.module.modules.chat.FriendList;
+import dev.kafka.kafkautils.module.modules.combat.EnchantHelper;
 import dev.kafka.kafkautils.util.Render3D;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
@@ -142,7 +143,7 @@ public class KafkaUtilsClient implements ClientModInitializer {
          return fc == null || !fc.handleCommand(command);
       });
 
-      // Client command: /kafka team add|remove|list
+      // Client command: /kafka team add|remove|list , /kafka enchant
       ClientCommandRegistrationCallback.EVENT.register((dispatcher, access) -> {
          dispatcher.register(ClientCommandManager.literal("kafka").then(ClientCommandManager.literal("team")
             .then(ClientCommandManager.literal("add").then(ClientCommandManager.argument("name", StringArgumentType.word()).executes(c -> {
@@ -164,7 +165,14 @@ public class KafkaUtilsClient implements ClientModInitializer {
                String list = fl == null || fl.friends().isEmpty() ? "§7пусто" : "§r" + String.join(", ", fl.friends());
                c.getSource().sendFeedback(class_2561.method_43470("§dДрузья: " + list));
                return 1;
-            }))));
+            })))
+            .then(ClientCommandManager.literal("enchant").executes(c -> {
+               EnchantHelper eh = (EnchantHelper)ModuleManager.get(EnchantHelper.class);
+               if (eh != null) {
+                  eh.printHints();
+               }
+               return 1;
+            })));
       });
 
       ClientPlayConnectionEvents.JOIN.register((ClientPlayConnectionEvents.Join)(handler, sender, client) -> HudManager.onWorldJoin());
