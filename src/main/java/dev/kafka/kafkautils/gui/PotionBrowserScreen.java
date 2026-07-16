@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import net.minecraft.class_11909;
 import net.minecraft.class_1792;
 import net.minecraft.class_1799;
 import net.minecraft.class_1842;
@@ -44,6 +45,7 @@ public class PotionBrowserScreen extends class_437 {
    private boolean ext;
    private boolean upg;
    private String selected;
+   private String hoveredKey;
    private String searchText = "";
    private class_342 search;
 
@@ -179,6 +181,7 @@ public class PotionBrowserScreen extends class_437 {
             hovered = key;
          }
       }
+      this.hoveredKey = hovered;
 
       // Recipe panel for the selected potion.
       if (this.selected != null && this.brew != null) {
@@ -200,18 +203,12 @@ public class PotionBrowserScreen extends class_437 {
       }
    }
 
-   public boolean method_25402(double mouseX, double mouseY, int button) {
-      List<String> list = this.filtered();
-      int cols = this.cols();
-      for (int i = 0; i < list.size(); ++i) {
-         int x = GRID_X + (i % cols) * CELL;
-         int y = GRID_TOP + (i / cols) * CELL;
-         if (mouseX >= x && mouseX < x + 18 && mouseY >= y && mouseY < y + 18) {
-            this.selected = list.get(i);
-            return true;
-         }
+   public boolean method_25402(class_11909 click, boolean doubled) {
+      if (this.hoveredKey != null && click.method_74245() == 0) {
+         this.selected = this.hoveredKey;
+         return true;
       }
-      return super.method_25402(mouseX, mouseY, button);
+      return super.method_25402(click, doubled);
    }
 
    public boolean method_25421() {
