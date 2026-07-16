@@ -103,11 +103,12 @@ public class BrewHelper extends Module {
          upg = false;
          warns.add("Нельзя продлить и усилить одновременно — беру продление.");
       }
-      if (ext && !b.ext) {
+      String lk = key.toLowerCase(Locale.ROOT);
+      if (ext && potionEntry("long_" + lk) == null) {
          ext = false;
          warns.add("Это зелье нельзя продлить (Редстоун).");
       }
-      if (upg && !b.upg) {
+      if (upg && potionEntry("strong_" + lk) == null) {
          upg = false;
          warns.add("Это зелье нельзя усилить до II (Светокаменная пыль).");
       }
@@ -190,47 +191,46 @@ public class BrewHelper extends Module {
 
    private static Map<String, Brew> buildBrews() {
       Map<String, Brew> m = new LinkedHashMap<>();
-      // key, ru, canExtend, canUpgrade, then post-Awkward (ingredient, result) pairs
-      m.put("fire_resistance", brew("Огнестойкость", true, false, "Сгусток магмы", "Огнестойкость"));
-      m.put("night_vision", brew("Ночное зрение", true, false, "Золотая морковь", "Ночное зрение"));
-      m.put("invisibility", brew("Невидимость", true, false, "Золотая морковь", "Ночное зрение", "Приготовленный паучий глаз", "Невидимость"));
-      m.put("swiftness", brew("Скорость", true, true, "Сахар", "Скорость"));
-      m.put("slowness", brew("Медлительность", true, true, "Сахар", "Скорость", "Приготовленный паучий глаз", "Медлительность"));
-      m.put("strength", brew("Сила", true, true, "Огненный порошок", "Сила"));
-      m.put("weakness", brew("Слабость", true, false, "Приготовленный паучий глаз", "Слабость"));
-      m.put("healing", brew("Лечение", false, true, "Сверкающий ломтик арбуза", "Лечение"));
-      m.put("harming", brew("Урон", false, true, "Сверкающий ломтик арбуза", "Лечение", "Приготовленный паучий глаз", "Урон"));
-      m.put("poison", brew("Отравление", true, true, "Паучий глаз", "Отравление"));
-      m.put("regeneration", brew("Регенерация", true, true, "Слеза гаста", "Регенерация"));
-      m.put("leaping", brew("Прыгучесть", true, true, "Кроличья лапка", "Прыгучесть"));
-      m.put("slow_falling", brew("Плавное падение", true, false, "Мембрана фантома", "Плавное падение"));
-      m.put("water_breathing", brew("Подводное дыхание", true, false, "Иглобрюх", "Подводное дыхание"));
-      m.put("turtle_master", brew("Черепашья мощь", true, true, "Черепаший панцирь", "Черепашья мощь"));
-      m.put("wind_charged", brew("Ветровой заряд", false, false, "Стержень бриза", "Ветровой заряд"));
-      m.put("weaving", brew("Ткачество", false, false, "Паутина", "Ткачество"));
-      m.put("oozing", brew("Склизкость", false, false, "Блок слизи", "Склизкость"));
-      m.put("infested", brew("Заражение", false, false, "Камень", "Заражение"));
+      // key, ru, then post-Awkward (ingredient, result) pairs.
+      // Продлить/Усилить availability is detected from the game registry
+      // (long_/strong_ variants), not hardcoded, so it stays correct for every
+      // potion including the Trial Chamber ones.
+      m.put("fire_resistance", brew("Огнестойкость", "Сгусток магмы", "Огнестойкость"));
+      m.put("night_vision", brew("Ночное зрение", "Золотая морковь", "Ночное зрение"));
+      m.put("invisibility", brew("Невидимость", "Золотая морковь", "Ночное зрение", "Приготовленный паучий глаз", "Невидимость"));
+      m.put("swiftness", brew("Скорость", "Сахар", "Скорость"));
+      m.put("slowness", brew("Медлительность", "Сахар", "Скорость", "Приготовленный паучий глаз", "Медлительность"));
+      m.put("strength", brew("Сила", "Огненный порошок", "Сила"));
+      m.put("weakness", brew("Слабость", "Приготовленный паучий глаз", "Слабость"));
+      m.put("healing", brew("Лечение", "Сверкающий ломтик арбуза", "Лечение"));
+      m.put("harming", brew("Урон", "Сверкающий ломтик арбуза", "Лечение", "Приготовленный паучий глаз", "Урон"));
+      m.put("poison", brew("Отравление", "Паучий глаз", "Отравление"));
+      m.put("regeneration", brew("Регенерация", "Слеза гаста", "Регенерация"));
+      m.put("leaping", brew("Прыгучесть", "Кроличья лапка", "Прыгучесть"));
+      m.put("slow_falling", brew("Плавное падение", "Мембрана фантома", "Плавное падение"));
+      m.put("water_breathing", brew("Подводное дыхание", "Иглобрюх", "Подводное дыхание"));
+      m.put("turtle_master", brew("Черепашья мощь", "Черепаший панцирь", "Черепашья мощь"));
+      m.put("wind_charged", brew("Ветровой заряд", "Стержень бриза", "Ветровой заряд"));
+      m.put("weaving", brew("Ткачество", "Паутина", "Ткачество"));
+      m.put("oozing", brew("Склизкость", "Блок слизи", "Склизкость"));
+      m.put("infested", brew("Заражение", "Камень", "Заражение"));
       return m;
    }
 
-   private static Brew brew(String ru, boolean ext, boolean upg, String... pairs) {
+   private static Brew brew(String ru, String... pairs) {
       List<String[]> steps = new ArrayList<>();
       for (int i = 0; i + 1 < pairs.length; i += 2) {
          steps.add(new String[]{pairs[i], pairs[i + 1]});
       }
-      return new Brew(ru, ext, upg, steps);
+      return new Brew(ru, steps);
    }
 
    private static final class Brew {
       final String ru;
-      final boolean ext;
-      final boolean upg;
       final List<String[]> steps;
 
-      Brew(String ru, boolean ext, boolean upg, List<String[]> steps) {
+      Brew(String ru, List<String[]> steps) {
          this.ru = ru;
-         this.ext = ext;
-         this.upg = upg;
          this.steps = steps;
       }
    }
