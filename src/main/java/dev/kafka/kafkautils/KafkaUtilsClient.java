@@ -14,6 +14,7 @@ import dev.kafka.kafkautils.module.WorldRenderModule;
 import dev.kafka.kafkautils.module.modules.chat.AntiSpam;
 import dev.kafka.kafkautils.module.modules.chat.AutoTeleport;
 import dev.kafka.kafkautils.module.modules.chat.ChatPing;
+import dev.kafka.kafkautils.module.modules.chat.ClickableChat;
 import dev.kafka.kafkautils.module.modules.chat.CoordinateShare;
 import dev.kafka.kafkautils.module.modules.chat.FriendChat;
 import dev.kafka.kafkautils.module.modules.chat.FriendHighlight;
@@ -149,6 +150,10 @@ public class KafkaUtilsClient implements ClientModInitializer {
          FriendHighlight fh = (FriendHighlight)ModuleManager.get(FriendHighlight.class);
          if (fh != null) {
             result = fh.process(result);
+         }
+         ClickableChat cc = (ClickableChat)ModuleManager.get(ClickableChat.class);
+         if (cc != null) {
+            result = cc.process(result);
          }
          return result;
       });

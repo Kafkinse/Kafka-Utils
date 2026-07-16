@@ -3,6 +3,7 @@ package dev.kafka.kafkautils.module;
 import dev.kafka.kafkautils.module.modules.chat.AntiSpam;
 import dev.kafka.kafkautils.module.modules.chat.AutoTeleport;
 import dev.kafka.kafkautils.module.modules.chat.ChatPing;
+import dev.kafka.kafkautils.module.modules.chat.ClickableChat;
 import dev.kafka.kafkautils.module.modules.chat.FriendChat;
 import dev.kafka.kafkautils.module.modules.chat.FriendHighlight;
 import dev.kafka.kafkautils.module.modules.chat.FriendList;
@@ -88,6 +89,7 @@ public final class ModuleManager {
       register(new FriendChat());
       register(new PlayerLogger());
       register(new AutoTeleport());
+      register(new ClickableChat());
       register(new StaffNotify());
       register(new PlayerTracker());
       register(new StaffList());
