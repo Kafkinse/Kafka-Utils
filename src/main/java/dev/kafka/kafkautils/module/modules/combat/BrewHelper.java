@@ -21,18 +21,33 @@ import java.util.Map;
  * reported instead of shown.
  */
 public class BrewHelper extends Module {
-   private static final int DRINK = 0;
-   private static final int SPLASH = 1;
-   private static final int LINGERING = 2;
+   public static final int DRINK = 0;
+   public static final int SPLASH = 1;
+   public static final int LINGERING = 2;
 
    private static final Map<String, Brew> BREWS = buildBrews();
 
+   private static boolean openRequested;
+
    public BrewHelper() {
-      super("Brew Helper", "Порядок варки зелий, включая взрывные и оседающие (/kafka brew).", Category.FARMING);
+      super("Brew Helper", "Меню варки зелий: взрывные, оседающие, поиск (/kafka brew).", Category.FARMING);
    }
 
    protected void onEnable() {
-      ChatUtil.info("§d[Варка] §7используй §r/kafka brew <зелье> §7[splash|lingering] [long|strong]");
+      if (mc.field_1724 != null) {
+         requestOpen(); // open the potion browser on the next client tick
+      }
+   }
+
+   /** Ask the client to open the potion browser GUI (consumed in the tick loop). */
+   public static void requestOpen() {
+      openRequested = true;
+   }
+
+   public static boolean consumeOpen() {
+      boolean r = openRequested;
+      openRequested = false;
+      return r;
    }
 
    public List<String> brewKeys() {
@@ -46,17 +61,28 @@ public class BrewHelper extends Module {
 
    /** Prints the brewing order for {@code key}, honouring option keywords. */
    public void printBrew(String key, String options) {
-      Brew b = BREWS.get(key.toLowerCase(Locale.ROOT));
-      if (b == null) {
+      if (!BREWS.containsKey(key.toLowerCase(Locale.ROOT))) {
          ChatUtil.info("§d[Варка] §7неизвестно «" + key + "». Доступно: §r" + String.join(", ", BREWS.keySet()));
          return;
       }
-
       String o = options.toLowerCase(Locale.ROOT);
       int type = o.contains("linger") || o.contains("оседа") ? LINGERING
          : (o.contains("splash") || o.contains("взрыв") ? SPLASH : DRINK);
       boolean ext = o.contains("long") || o.contains("удлин") || o.contains("длит") || o.contains("ext");
       boolean upg = o.contains("strong") || o.contains("усил") || o.contains("amp") || o.contains(" ii") || o.contains("2");
+      for (String line : this.recipeLines(key, type, ext, upg)) {
+         ChatUtil.info(line);
+      }
+   }
+
+   /** Builds the brewing-order lines for the given potion + variant (used by chat and the GUI). */
+   public List<String> recipeLines(String key, int type, boolean ext, boolean upg) {
+      List<String> out = new ArrayList<>();
+      Brew b = BREWS.get(key.toLowerCase(Locale.ROOT));
+      if (b == null) {
+         out.add("§7неизвестно");
+         return out;
+      }
 
       List<String> warns = new ArrayList<>();
       if (ext && upg) {
@@ -65,42 +91,41 @@ public class BrewHelper extends Module {
       }
       if (ext && !b.ext) {
          ext = false;
-         warns.add("это зелье нельзя удлинить (Красная пыль).");
+         warns.add("это зелье нельзя удлинить (Редстоун).");
       }
       if (upg && !b.upg) {
          upg = false;
-         warns.add("это зелье нельзя усилить до II (Светящаяся пыль).");
+         warns.add("это зелье нельзя усилить до II (Светокаменная пыль).");
       }
 
       String typeRu = type == SPLASH ? "Взрывное" : type == LINGERING ? "Оседающее" : "Питьевое";
       String modRu = ext ? " удлинённое" : upg ? " усиленное (II)" : "";
 
-      ChatUtil.info("§d§l— Варка: " + b.ru + " §r§7(" + typeRu.toLowerCase(Locale.ROOT) + modRu + ")");
-      ChatUtil.info("§7Топливо: §rОгненный порошок §7в левый слот.");
-
+      out.add("§d§l— Варка: " + b.ru + " §r§7(" + typeRu.toLowerCase(Locale.ROOT) + modRu + ")");
+      out.add("§7Топливо: §rОгненный порошок §7в левый слот.");
       int n = 1;
-      ChatUtil.info("§7" + n++ + ". §rНалей §eпузырёк воды ×3 §7в нижние слоты.");
-      ChatUtil.info(step(n++, "Адский нарост", "Мутное зелье"));
+      out.add("§7" + n++ + ". §rНалей §eпузырёк воды ×3 §7в нижние слоты.");
+      out.add(step(n++, "Адский нарост", "Мутное зелье"));
       for (String[] s : b.steps) {
-         ChatUtil.info(step(n++, s[0], s[1]));
+         out.add(step(n++, s[0], s[1]));
       }
       if (ext) {
-         ChatUtil.info(step(n++, "Редстоун", "удлинённое"));
+         out.add(step(n++, "Редстоун", "удлинённое"));
       }
       if (upg) {
-         ChatUtil.info(step(n++, "Светокаменная пыль", "усиленное (II)"));
+         out.add(step(n++, "Светокаменная пыль", "усиленное (II)"));
       }
       if (type == SPLASH || type == LINGERING) {
-         ChatUtil.info(step(n++, "Порох", "взрывное"));
+         out.add(step(n++, "Порох", "взрывное"));
       }
       if (type == LINGERING) {
-         ChatUtil.info(step(n++, "Драконье дыхание", "оседающее"));
+         out.add(step(n++, "Драконье дыхание", "оседающее"));
       }
-
-      ChatUtil.info("§aГотово: " + typeRu.toLowerCase(Locale.ROOT) + " зелье «" + b.ru + "»" + modRu + ".");
+      out.add("§aГотово: " + typeRu.toLowerCase(Locale.ROOT) + " зелье «" + b.ru + "»" + modRu + ".");
       for (String w : warns) {
-         ChatUtil.info("§e⚠ " + w);
+         out.add("§e⚠ " + w);
       }
+      return out;
    }
 
    private static String step(int n, String ingredient, String result) {

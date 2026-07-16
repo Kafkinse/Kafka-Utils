@@ -4,6 +4,7 @@ import com.mojang.brigadier.LiteralMessage;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import dev.kafka.kafkautils.config.ConfigManager;
 import dev.kafka.kafkautils.gui.ClickGuiScreen;
+import dev.kafka.kafkautils.gui.PotionBrowserScreen;
 import dev.kafka.kafkautils.hud.HudManager;
 import dev.kafka.kafkautils.module.Module;
 import dev.kafka.kafkautils.module.ModuleManager;
@@ -83,6 +84,9 @@ public class KafkaUtilsClient implements ClientModInitializer {
          this.shareKeyWasDown = sDown;
          if (client.field_1724 != null && client.field_1687 != null) {
             ModuleManager.onTick();
+            if (BrewHelper.consumeOpen()) {
+               client.method_1507(new PotionBrowserScreen());
+            }
          }
       });
 
@@ -189,7 +193,10 @@ public class KafkaUtilsClient implements ClientModInitializer {
                }
                return 1;
             })))
-            .then(ClientCommandManager.literal("brew").then(ClientCommandManager.argument("potion", StringArgumentType.word()).suggests((ctx, b) -> {
+            .then(ClientCommandManager.literal("brew").executes(c -> {
+               BrewHelper.requestOpen();
+               return 1;
+            }).then(ClientCommandManager.argument("potion", StringArgumentType.word()).suggests((ctx, b) -> {
                BrewHelper bh = (BrewHelper)ModuleManager.get(BrewHelper.class);
                if (bh != null) {
                   for (String k : bh.brewKeys()) {
