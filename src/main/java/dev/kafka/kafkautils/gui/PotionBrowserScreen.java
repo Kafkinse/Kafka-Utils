@@ -79,7 +79,7 @@ public class PotionBrowserScreen extends class_437 {
       }
 
       // Modifier toggles.
-      this.method_37063(class_4185.method_46430(class_2561.method_43470((this.ext ? "§a" : "§7") + "Удлинить"), (b) -> {
+      this.method_37063(class_4185.method_46430(class_2561.method_43470((this.ext ? "§a" : "§7") + "Продлить"), (b) -> {
          this.ext = !this.ext;
          if (this.ext) {
             this.upg = false;
@@ -106,7 +106,7 @@ public class PotionBrowserScreen extends class_437 {
       int px = this.panelX();
       int bw = Math.max(50, (this.field_22789 - px - 16) / 3);
       int by = this.field_22790 - 24;
-      this.method_37063(class_4185.method_46430(class_2561.method_43470("§aВ чат"), (b) -> {
+      this.method_37063(class_4185.method_46430(class_2561.method_43470("§aВ Чат"), (b) -> {
          if (this.selected != null && this.brew != null) {
             this.brew.printRecipe(this.selected, this.tab, this.ext, this.upg);
          }
@@ -181,7 +181,7 @@ public class PotionBrowserScreen extends class_437 {
       ctx.method_25294(0, 0, w, h, BG);
       ctx.method_25294(0, 0, w, 30, HEADER);
       ctx.method_25294(0, 29, w, 31, ACCENT);
-      ctx.method_51433(this.field_22793, "§5§lЗелья §d§l— варка", 16, 11, 0xFFD9C2FF, true);
+      ctx.method_51433(this.field_22793, "§5§lЗелья §d§l— Варка", 16, 11, 0xFFD9C2FF, true);
       ctx.method_51433(this.field_22793, "§7ESC", w - 32, 11, 0xFF9A8FB0, true);
 
       int px = this.panelX();

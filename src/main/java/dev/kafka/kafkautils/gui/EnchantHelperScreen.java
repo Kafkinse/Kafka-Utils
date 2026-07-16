@@ -50,7 +50,7 @@ public class EnchantHelperScreen extends class_437 {
       }
 
       int by = this.field_22790 - 26;
-      this.method_37063(class_4185.method_46430(class_2561.method_43470("§aВ чат"), (b) -> {
+      this.method_37063(class_4185.method_46430(class_2561.method_43470("§aВ Чат"), (b) -> {
          if (this.selectedKey != null) {
             this.helper.printPreset(this.selectedKey);
          }
@@ -77,7 +77,7 @@ public class EnchantHelperScreen extends class_437 {
       ctx.method_25294(0, 0, w, h, BG);
       ctx.method_25294(0, 0, w, 30, HEADER);
       ctx.method_25294(0, 29, w, 31, ACCENT);
-      ctx.method_51433(this.field_22793, "§5§lЗачарование §d§l— заготовки", 16, 11, 0xFFD9C2FF, true);
+      ctx.method_51433(this.field_22793, "§5§lЗачарование §d§l— Заготовки", 16, 11, 0xFFD9C2FF, true);
       ctx.method_51433(this.field_22793, "§7ESC", w - 32, 11, 0xFF9A8FB0, true);
 
       ctx.method_25294(PANEL_X - 6, 38, w - 12, h - 32, PANEL);

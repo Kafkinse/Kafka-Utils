@@ -3,11 +3,18 @@ package dev.kafka.kafkautils.module.modules.combat;
 import dev.kafka.kafkautils.module.Category;
 import dev.kafka.kafkautils.module.Module;
 import dev.kafka.kafkautils.util.ChatUtil;
+import dev.kafka.kafkautils.util.RenderUtil;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import net.minecraft.class_1291;
+import net.minecraft.class_1293;
+import net.minecraft.class_1842;
+import net.minecraft.class_2960;
+import net.minecraft.class_6880;
+import net.minecraft.class_7923;
 
 /**
  * Brewing advisor. The player picks a potion and the exact brewing order is
@@ -94,41 +101,45 @@ public class BrewHelper extends Module {
       List<String> warns = new ArrayList<>();
       if (ext && upg) {
          upg = false;
-         warns.add("нельзя удлинить и усилить одновременно — беру удлинение.");
+         warns.add("Нельзя продлить и усилить одновременно — беру продление.");
       }
       if (ext && !b.ext) {
          ext = false;
-         warns.add("это зелье нельзя удлинить (Редстоун).");
+         warns.add("Это зелье нельзя продлить (Редстоун).");
       }
       if (upg && !b.upg) {
          upg = false;
-         warns.add("это зелье нельзя усилить до II (Светокаменная пыль).");
+         warns.add("Это зелье нельзя усилить до II (Светокаменная пыль).");
       }
 
       String typeRu = type == SPLASH ? "Взрывное" : type == LINGERING ? "Оседающее" : "Питьевое";
-      String modRu = ext ? " удлинённое" : upg ? " усиленное (II)" : "";
+      String modRu = ext ? " продлённое" : upg ? " усиленное II" : "";
 
-      out.add("§d§l— Варка: " + b.ru + " §r§7(" + typeRu.toLowerCase(Locale.ROOT) + modRu + ")");
+      out.add("§d§l— Варка: " + b.ru + " §r§7(" + typeRu + modRu + ")");
       out.add("§7Топливо: §rОгненный порошок §7в левый слот.");
       int n = 1;
-      out.add("§7" + n++ + ". §rНалей §eпузырёк воды ×3 §7в нижние слоты.");
+      out.add("§7" + n++ + ". §rНалей §eПузырёк воды ×3 §7в нижние слоты.");
       out.add(step(n++, "Адский нарост", "Мутное зелье"));
       for (String[] s : b.steps) {
          out.add(step(n++, s[0], s[1]));
       }
       if (ext) {
-         out.add(step(n++, "Редстоун", "удлинённое"));
+         out.add(step(n++, "Редстоун", "Продлённое"));
       }
       if (upg) {
-         out.add(step(n++, "Светокаменная пыль", "усиленное (II)"));
+         out.add(step(n++, "Светокаменная пыль", "Усиленное II"));
       }
       if (type == SPLASH || type == LINGERING) {
-         out.add(step(n++, "Порох", "взрывное"));
+         out.add(step(n++, "Порох", "Взрывное"));
       }
       if (type == LINGERING) {
-         out.add(step(n++, "Драконье дыхание", "оседающее"));
+         out.add(step(n++, "Драконье дыхание", "Оседающее"));
       }
-      out.add("§aГотово: " + typeRu.toLowerCase(Locale.ROOT) + " зелье «" + b.ru + "»" + modRu + ".");
+      out.add("§aГотово: §f" + typeRu + modRu + " зелье «" + b.ru + "».");
+      String summary = resultSummary(key, type, ext, upg);
+      if (!summary.isEmpty()) {
+         out.add("§bИтог: §f" + summary);
+      }
       for (String w : warns) {
          out.add("§e⚠ " + w);
       }
@@ -137,6 +148,42 @@ public class BrewHelper extends Module {
 
    private static String step(int n, String ingredient, String result) {
       return "§7" + n + ". §r+ §e" + ingredient + " §7→ §r" + result;
+   }
+
+   /** Localised result effect(s) with duration/level, like the creative tooltip. */
+   private static String resultSummary(String key, int type, boolean ext, boolean upg) {
+      String id = (ext ? "long_" : upg ? "strong_" : "") + key.toLowerCase(Locale.ROOT);
+      class_6880<class_1842> entry = potionEntry(id);
+      if (entry == null) {
+         entry = potionEntry(key.toLowerCase(Locale.ROOT));
+      }
+      if (entry == null) {
+         return "";
+      }
+      double mult = type == SPLASH ? 0.75 : type == LINGERING ? 0.25 : 1.0;
+      List<String> parts = new ArrayList<>();
+      for (class_1293 eff : entry.comp_349().method_8049()) {
+         String name = ((class_1291)eff.method_5579().comp_349()).method_5560().getString();
+         int amp = eff.method_5578();
+         String lvl = amp > 0 ? " " + RenderUtil.roman(amp + 1) : "";
+         int dur = eff.method_5584();
+         if (eff.method_48559() || dur <= 20) {
+            parts.add(name + lvl);
+         } else {
+            parts.add(name + lvl + " (" + fmtTime((int)(dur * mult) / 20) + ")");
+         }
+      }
+      return String.join(", ", parts);
+   }
+
+   private static String fmtTime(int seconds) {
+      return seconds / 60 + ":" + String.format(Locale.ROOT, "%02d", seconds % 60);
+   }
+
+   @SuppressWarnings("unchecked")
+   private static class_6880<class_1842> potionEntry(String id) {
+      Object ref = class_7923.field_41179.method_10223(class_2960.method_60656(id)).orElse(null);
+      return (class_6880<class_1842>)ref;
    }
 
    // --- recipe data -------------------------------------------------------
