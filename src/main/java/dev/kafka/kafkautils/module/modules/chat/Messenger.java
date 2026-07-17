@@ -35,7 +35,7 @@ public class Messenger extends Module {
    private static final int LOAD_LIMIT = 300;
    private static boolean openRequested;
 
-   private final StringSetting url = this.add(new StringSetting("Server URL", "ws://127.0.0.1:8765"));
+   private final StringSetting url = this.add(new StringSetting("Server URL", "ws://163.123.180.81:10041"));
    private final StringSetting key = this.add(new StringSetting("Key", "changeme"));
    private final BooleanSetting fallback = this.add(new BooleanSetting("Fallback via /msg", true));
    private final BooleanSetting notify = this.add(new BooleanSetting("Chat Notify", true));
