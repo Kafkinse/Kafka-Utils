@@ -17,8 +17,13 @@ import java.util.Set;
  * mod replies PONG — both lines are swallowed, players never see them.
  */
 public class ModRadar extends Module {
-   /** Control payload prefix inside the friend-chat marker protocol. */
-   public static final char CONTROL = '\u0001';
+   /**
+    * Control payload prefix inside the friend-chat marker protocol. Must be
+    * printable ASCII: these payloads travel through the server's whisper
+    * command, and vanilla rejects control characters ("Invalid characters in
+    * chat") and the section sign, which kicks the sender.
+    */
+   public static final String CONTROL = "~kfc~";
 
    private static final Set<String> USERS = new HashSet<>();
 

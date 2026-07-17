@@ -28,8 +28,12 @@ import net.fabricmc.loader.api.FabricLoader;
  * {@code @nick} for DMs and {@code #group} for relay-side groups.
  */
 public class Messenger extends Module {
-   /** Prefix routing a fallback whisper payload into the messenger window. */
-   public static final char FALLBACK = '\u0002';
+   /**
+    * Prefix routing a fallback whisper payload into the messenger window.
+    * Printable ASCII on purpose: it is sent through the server's whisper
+    * command, which rejects control characters and kicks the sender.
+    */
+   public static final String FALLBACK = "~kfm~";
 
    private static final Path LOG = FabricLoader.getInstance().getConfigDir().resolve("kafkautils-messenger.log");
    private static final int LOAD_LIMIT = 300;

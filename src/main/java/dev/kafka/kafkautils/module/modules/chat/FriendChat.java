@@ -117,20 +117,20 @@ public class FriendChat extends Module {
       }
       ModRadar radar = ModuleManager.get(ModRadar.class);
       // Hidden control payloads (PING/PONG) are consumed silently.
-      if (!text.isEmpty() && text.charAt(0) == ModRadar.CONTROL) {
+      if (text.startsWith(ModRadar.CONTROL)) {
          if (radar != null && radar.isEnabled()) {
-            radar.onControl(sender, text.substring(1));
+            radar.onControl(sender, text.substring(ModRadar.CONTROL.length()));
          }
          return true;
       }
       // Messenger fallback payloads route into the messenger window instead.
-      if (!text.isEmpty() && text.charAt(0) == Messenger.FALLBACK) {
+      if (text.startsWith(Messenger.FALLBACK)) {
          if (radar != null && radar.isEnabled()) {
             radar.markUser(sender);
          }
          Messenger ms = ModuleManager.get(Messenger.class);
          if (ms != null && ms.isEnabled()) {
-            ms.onFallback(sender, text.substring(1));
+            ms.onFallback(sender, text.substring(Messenger.FALLBACK.length()));
             return true;
          }
          return false;
