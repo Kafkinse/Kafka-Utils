@@ -44,6 +44,7 @@ public class BrewHelper extends Module {
       if (mc.field_1724 != null) {
          requestOpen(); // open the potion browser on the next client tick
       }
+      this.setEnabled(false); // launcher only — never stays "on"
    }
 
    /** Ask the client to open the potion browser GUI (consumed in the tick loop). */

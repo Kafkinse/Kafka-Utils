@@ -66,6 +66,7 @@ public class EnchantHelper extends Module {
       if (mc.field_1724 != null) {
          requestOpen(); // open the enchant menu on the next client tick
       }
+      this.setEnabled(false); // launcher only — never stays "on"
    }
 
    public static void requestOpen() {

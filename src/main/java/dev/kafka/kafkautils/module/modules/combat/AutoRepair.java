@@ -64,8 +64,10 @@ public class AutoRepair extends Module {
       }
 
       if (!this.active) {
-         if (!this.hasWork()) {
-            return; // nothing below the threshold — stay idle so mining/farming runs
+         // Need something to repair AND experience to drop; otherwise stay idle
+         // (no crouch) so mining/farming runs and it doesn't loop on/off.
+         if (!this.hasWork() || !this.hasXp()) {
+            return;
          }
          this.active = true;
          this.clickCounter = 0;
@@ -75,6 +77,11 @@ public class AutoRepair extends Module {
             this.bringToHand();
          }
       } else {
+         if (!this.hasXp()) {
+            ChatUtil.info("§d[Авторемонт] §7опыт закончился — пауза.");
+            this.stop(); // releases the crouch; won't re-activate until XP returns
+            return;
+         }
          class_1799 held = mc.field_1724.method_6047();
          if (!this.isMendable(held) || isFull(held)) {
             if (!this.bringToHand()) {
@@ -175,6 +182,11 @@ public class AutoRepair extends Module {
 
    private static boolean isFull(class_1799 stack) {
       return stack.method_7919() == 0;
+   }
+
+   /** Whether the player has any experience to drop (Mending needs XP orbs). */
+   private boolean hasXp() {
+      return mc.field_1724.field_7520 > 0 || mc.field_1724.field_7510 > 0.0F;
    }
 
    private static boolean hasMending(class_1799 stack) {
