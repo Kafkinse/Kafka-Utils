@@ -6,6 +6,7 @@ import dev.kafka.kafkautils.config.ConfigManager;
 import dev.kafka.kafkautils.gui.AutoTeleportScreen;
 import dev.kafka.kafkautils.gui.ClickGuiScreen;
 import dev.kafka.kafkautils.gui.EnchantHelperScreen;
+import dev.kafka.kafkautils.gui.MessengerScreen;
 import dev.kafka.kafkautils.gui.PotionBrowserScreen;
 import dev.kafka.kafkautils.hud.HudManager;
 import dev.kafka.kafkautils.module.Module;
@@ -19,6 +20,7 @@ import dev.kafka.kafkautils.module.modules.chat.CoordinateShare;
 import dev.kafka.kafkautils.module.modules.chat.FriendChat;
 import dev.kafka.kafkautils.module.modules.chat.FriendHighlight;
 import dev.kafka.kafkautils.module.modules.chat.FriendList;
+import dev.kafka.kafkautils.module.modules.chat.Messenger;
 import dev.kafka.kafkautils.module.modules.chat.PrivateMessages;
 import dev.kafka.kafkautils.module.modules.combat.BrewHelper;
 import dev.kafka.kafkautils.module.modules.combat.EnchantHelper;
@@ -97,6 +99,9 @@ public class KafkaUtilsClient implements ClientModInitializer {
             }
             if (AutoTeleport.consumeOpen()) {
                client.method_1507(new AutoTeleportScreen());
+            }
+            if (Messenger.consumeOpen()) {
+               client.method_1507(new MessengerScreen());
             }
             HudManager.tickChatDrag();
          }
@@ -289,7 +294,51 @@ public class KafkaUtilsClient implements ClientModInitializer {
                c.getSource().sendFeedback(class_2561.method_43470("§dРазрешённые (TPA): " + list));
                return 1;
             })))
-            .then(ClientCommandManager.literal("pm")
+            .then(ClientCommandManager.literal("group")
+            .then(ClientCommandManager.literal("create").then(ClientCommandManager.argument("name", StringArgumentType.word()).executes(c -> {
+               Messenger m = (Messenger)ModuleManager.get(Messenger.class);
+               if (m != null) {
+                  if (!m.isEnabled()) {
+                     m.setEnabled(true);
+                  }
+                  m.createGroup(StringArgumentType.getString(c, "name"));
+               }
+               return 1;
+            })))
+            .then(ClientCommandManager.literal("add").then(ClientCommandManager.argument("nick", StringArgumentType.word()).suggests((ctx, b) -> {
+               AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class);
+               if (t != null) {
+                  for (String p : t.onlinePlayers()) {
+                     b.suggest(p);
+                  }
+               }
+               return b.buildFuture();
+            }).then(ClientCommandManager.argument("group", StringArgumentType.word()).suggests((ctx, b) -> {
+               Messenger m = (Messenger)ModuleManager.get(Messenger.class);
+               if (m != null) {
+                  for (String g : m.knownGroups()) {
+                     b.suggest(g);
+                  }
+               }
+               return b.buildFuture();
+            }).executes(c -> {
+               Messenger m = (Messenger)ModuleManager.get(Messenger.class);
+               if (m != null) {
+                  if (!m.isEnabled()) {
+                     m.setEnabled(true);
+                  }
+                  m.addToGroup(StringArgumentType.getString(c, "nick"), StringArgumentType.getString(c, "group"));
+               }
+               return 1;
+            })))))
+            .then(ClientCommandManager.literal("pm").executes(c -> {
+               Messenger m = (Messenger)ModuleManager.get(Messenger.class);
+               if (m != null && !m.isEnabled()) {
+                  m.setEnabled(true);
+               }
+               Messenger.requestOpen();
+               return 1;
+            })
             .then(ClientCommandManager.literal("search").then(ClientCommandManager.argument("query", StringArgumentType.greedyString()).executes(c -> {
                PrivateMessages p = (PrivateMessages)ModuleManager.get(PrivateMessages.class);
                if (p != null) {

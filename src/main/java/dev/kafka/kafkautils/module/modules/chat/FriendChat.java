@@ -123,6 +123,18 @@ public class FriendChat extends Module {
          }
          return true;
       }
+      // Messenger fallback payloads route into the messenger window instead.
+      if (!text.isEmpty() && text.charAt(0) == Messenger.FALLBACK) {
+         if (radar != null && radar.isEnabled()) {
+            radar.markUser(sender);
+         }
+         Messenger ms = ModuleManager.get(Messenger.class);
+         if (ms != null && ms.isEnabled()) {
+            ms.onFallback(sender, text.substring(1));
+            return true;
+         }
+         return false;
+      }
       if (radar != null && radar.isEnabled()) {
          radar.markUser(sender); // any decoded message proves they run the mod
       }
