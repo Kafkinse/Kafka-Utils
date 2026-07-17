@@ -19,6 +19,7 @@ import dev.kafka.kafkautils.module.modules.chat.CoordinateShare;
 import dev.kafka.kafkautils.module.modules.chat.FriendChat;
 import dev.kafka.kafkautils.module.modules.chat.FriendHighlight;
 import dev.kafka.kafkautils.module.modules.chat.FriendList;
+import dev.kafka.kafkautils.module.modules.chat.PrivateMessages;
 import dev.kafka.kafkautils.module.modules.combat.BrewHelper;
 import dev.kafka.kafkautils.module.modules.combat.EnchantHelper;
 import dev.kafka.kafkautils.util.Render3D;
@@ -134,6 +135,10 @@ public class KafkaUtilsClient implements ClientModInitializer {
          if (tp != null) {
             tp.handleMessage(message.getString());
          }
+         PrivateMessages pm = (PrivateMessages)ModuleManager.get(PrivateMessages.class);
+         if (pm != null && pm.handleIncoming(message.getString())) {
+            return false;
+         }
          AntiSpam as = (AntiSpam)ModuleManager.get(AntiSpam.class);
          return as == null || as.allow(message);
       });
@@ -165,7 +170,14 @@ public class KafkaUtilsClient implements ClientModInitializer {
       });
       ClientSendMessageEvents.ALLOW_COMMAND.register((command) -> {
          FriendChat fc = (FriendChat)ModuleManager.get(FriendChat.class);
-         return fc == null || !fc.handleCommand(command);
+         if (fc != null && fc.handleCommand(command)) {
+            return false;
+         }
+         PrivateMessages pm = (PrivateMessages)ModuleManager.get(PrivateMessages.class);
+         if (pm != null) {
+            pm.onCommand(command); // marks that whisper thread as read
+         }
+         return true;
       });
 
       // Client command: /kafka team add|remove|list , /kafka enchant
@@ -275,6 +287,37 @@ public class KafkaUtilsClient implements ClientModInitializer {
                AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class);
                String list = t == null || t.allowedList().isEmpty() ? "§7пусто" : "§r" + String.join(", ", t.allowedList());
                c.getSource().sendFeedback(class_2561.method_43470("§dРазрешённые (TPA): " + list));
+               return 1;
+            })))
+            .then(ClientCommandManager.literal("pm")
+            .then(ClientCommandManager.literal("search").then(ClientCommandManager.argument("query", StringArgumentType.greedyString()).executes(c -> {
+               PrivateMessages p = (PrivateMessages)ModuleManager.get(PrivateMessages.class);
+               if (p != null) {
+                  p.printSearch(StringArgumentType.getString(c, "query"));
+               }
+               return 1;
+            })))
+            .then(ClientCommandManager.literal("history").then(ClientCommandManager.argument("name", StringArgumentType.word()).suggests((ctx, b) -> {
+               AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class);
+               if (t != null) {
+                  for (String p : t.onlinePlayers()) {
+                     b.suggest(p);
+                  }
+               }
+               return b.buildFuture();
+            }).executes(c -> {
+               PrivateMessages p = (PrivateMessages)ModuleManager.get(PrivateMessages.class);
+               if (p != null) {
+                  p.printHistory(StringArgumentType.getString(c, "name"));
+               }
+               return 1;
+            })))
+            .then(ClientCommandManager.literal("read").executes(c -> {
+               PrivateMessages p = (PrivateMessages)ModuleManager.get(PrivateMessages.class);
+               if (p != null) {
+                  p.clearUnread();
+               }
+               c.getSource().sendFeedback(class_2561.method_43470("§d✉ §7Непрочитанные сброшены."));
                return 1;
             }))));
       });

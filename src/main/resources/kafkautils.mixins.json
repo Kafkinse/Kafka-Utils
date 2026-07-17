@@ -7,7 +7,8 @@
     "ClientBossBarHudAccessor",
     "ClientPlayNetworkHandlerMixin",
     "ClientPlayerInteractionManagerAccessor",
-    "MinecraftClientAccessor"
+    "MinecraftClientAccessor",
+    "PlayerListHudMixin"
   ],
   "injectors": {
     "defaultRequire": 1

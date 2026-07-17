@@ -81,6 +81,20 @@ public class FriendChat extends Module {
       return true;
    }
 
+   /** Sends one hidden marker whisper (used by Mod Radar for PING/PONG). */
+   public void whisper(String friend, String payload) {
+      if (mc.field_1724 == null || mc.method_1562() == null) {
+         return;
+      }
+      String me = mc.field_1724.method_7334().name();
+      this.sending = true;
+      try {
+         mc.method_1562().method_45730(this.msgCommand.get() + " " + friend + " " + this.marker() + me + "|" + payload);
+      } finally {
+         this.sending = false;
+      }
+   }
+
    /** Incoming server message. @return true if it was a friend message (hide the raw line). */
    public boolean handleIncoming(String rawText) {
       if (!this.isEnabled() || rawText == null) {
@@ -100,6 +114,17 @@ public class FriendChat extends Module {
       FriendList list = ModuleManager.get(FriendList.class);
       if (list == null || !list.isFriend(sender)) {
          return false;
+      }
+      ModRadar radar = ModuleManager.get(ModRadar.class);
+      // Hidden control payloads (PING/PONG) are consumed silently.
+      if (!text.isEmpty() && text.charAt(0) == ModRadar.CONTROL) {
+         if (radar != null && radar.isEnabled()) {
+            radar.onControl(sender, text.substring(1));
+         }
+         return true;
+      }
+      if (radar != null && radar.isEnabled()) {
+         radar.markUser(sender); // any decoded message proves they run the mod
       }
       ChatUtil.raw("§d[Друзья] §b" + sender + "§7: §r" + text);
       if (this.sound.get() && mc.field_1724 != null) {

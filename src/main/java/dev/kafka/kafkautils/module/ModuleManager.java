@@ -8,7 +8,9 @@ import dev.kafka.kafkautils.module.modules.chat.FriendChat;
 import dev.kafka.kafkautils.module.modules.chat.FriendHighlight;
 import dev.kafka.kafkautils.module.modules.chat.FriendList;
 import dev.kafka.kafkautils.module.modules.chat.CoordinateShare;
+import dev.kafka.kafkautils.module.modules.chat.ModRadar;
 import dev.kafka.kafkautils.module.modules.chat.PlayerLogger;
+import dev.kafka.kafkautils.module.modules.chat.PrivateMessages;
 import dev.kafka.kafkautils.module.modules.chat.PlayerTracker;
 import dev.kafka.kafkautils.module.modules.chat.StaffList;
 import dev.kafka.kafkautils.module.modules.chat.StaffNotify;
@@ -90,6 +92,8 @@ public final class ModuleManager {
       register(new PlayerLogger());
       register(new AutoTeleport());
       register(new ClickableChat());
+      register(new PrivateMessages());
+      register(new ModRadar());
       register(new StaffNotify());
       register(new PlayerTracker());
       register(new StaffList());
