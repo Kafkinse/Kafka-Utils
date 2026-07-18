@@ -22,4 +22,12 @@ public final class ChatUtil {
          mc.field_1705.method_1743().method_1812(class_2561.method_43470(message));
       }
    }
+
+   /** Adds a pre-built (possibly styled/clickable) text to the chat HUD. */
+   public static void text(class_2561 message) {
+      class_310 mc = class_310.method_1551();
+      if (mc.field_1724 != null) {
+         mc.field_1705.method_1743().method_1812(message);
+      }
+   }
 }

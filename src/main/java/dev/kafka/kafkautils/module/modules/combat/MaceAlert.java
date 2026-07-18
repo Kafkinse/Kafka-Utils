@@ -1,193 +1,154 @@
 package dev.kafka.kafkautils.module.modules.combat;
 
-import dev.kafka.kafkautils.hud.HudManager;
+import dev.kafka.kafkautils.module.Category;
+import dev.kafka.kafkautils.module.HudModule;
 import dev.kafka.kafkautils.module.Module;
-import dev.kafka.kafkautils.setting.Setting;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.Items;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.sound.SoundEvents;
-import org.lwjgl.glfw.GLFW;
+import dev.kafka.kafkautils.setting.BooleanSetting;
+import dev.kafka.kafkautils.setting.NumberSetting;
+import dev.kafka.kafkautils.util.RenderUtil;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import net.minecraft.class_1799;
+import net.minecraft.class_332;
+import net.minecraft.class_3414;
+import net.minecraft.class_3417;
+import net.minecraft.class_742;
 
-public class MaceAlert extends Module {
-    public Setting<Integer> minHeight = this.register(new Setting<>("Min Height", 8, 3, 20));
-    public Setting<Integer> detectionRange = this.register(new Setting<>("Detection Range", 20, 10, 40));
-    public Setting<String> alertLevel = this.register(new Setting<>("Alert Level", "IMPACT", "WATCH", "DANGER", "IMPACT"));
-    public Setting<Boolean> soundEnabled = this.register(new Setting<>("Sound", true));
-    public Setting<Boolean> autoShield = this.register(new Setting<>("Auto Shield", false));
-    public Setting<Boolean> showTimer = this.register(new Setting<>("Show Timer", true));
-    public Setting<Boolean> showDamageEst = this.register(new Setting<>("Show Damage Est", true));
+/**
+ * Warns when a nearby enemy holding a mace is winding up (rising) or committing
+ * to a downward slam, escalating SAFE → WATCH → DANGER → IMPACT. Rewritten to fit
+ * the mod's actual module framework (the original file targeted a different, and
+ * non-existent, Module/Setting API and yarn-named Minecraft classes).
+ */
+public class MaceAlert extends Module implements HudModule {
+   private final NumberSetting minHeight = this.add(new NumberSetting("Min Height", 8, 3, 20, 1));
+   private final NumberSetting detectionRange = this.add(new NumberSetting("Detection Range", 20, 10, 40, 2));
+   private final BooleanSetting sound = this.add(new BooleanSetting("Sound", true));
+   private final BooleanSetting showDamage = this.add(new BooleanSetting("Show Damage Est", true));
 
-    private enum ThreatLevel {
-        SAFE,
-        WATCH,
-        DANGER,
-        IMPACT
-    }
+   private enum ThreatLevel {
+      SAFE,
+      WATCH,
+      DANGER,
+      IMPACT
+   }
 
-    private ThreatLevel currentThreat = ThreatLevel.SAFE;
-    private PlayerEntity threatPlayer = null;
-    private long threatStartTime = 0;
-    private float estimatedDamage = 0;
-    private Vec3d impactDirection = null;
-    private int impactCountdown = 0;
+   private ThreatLevel currentThreat = ThreatLevel.SAFE;
+   private String threatName = null;
+   private float estimatedDamage = 0.0F;
 
-    private static final int KAFKA_PURPLE = 0xFF9D4EDD; // Kafka HSR color
-    private static final int WATCH_COLOR = 0xFFB88ED6;  // Light purple
-    private static final int DANGER_COLOR = 0xFFA855D0; // Medium purple
-    private static final int IMPACT_COLOR = 0xFF8A2BE2;  // Dark purple
+   public MaceAlert() {
+      super("Mace Alert", "Warns when an enemy is winding up a mace slam.", Category.COMBAT);
+   }
 
-    public MaceAlert() {
-        super("Mace Alert", KAFKA_PURPLE);
-    }
+   protected void onEnable() {
+      this.reset();
+   }
 
-    @Override
-    public void tick() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.world == null || mc.player == null) return;
+   protected void onDisable() {
+      this.reset();
+   }
 
-        threatPlayer = null;
-        currentThreat = ThreatLevel.SAFE;
-        estimatedDamage = 0;
-        impactDirection = null;
-        impactCountdown = 0;
+   private void reset() {
+      this.currentThreat = ThreatLevel.SAFE;
+      this.threatName = null;
+      this.estimatedDamage = 0.0F;
+   }
 
-        for (PlayerEntity player : mc.world.getPlayers()) {
-            if (player == mc.player || player.isSpectator()) continue;
-            if (mc.player.distanceTo(player) > detectionRange.getValue()) continue;
+   public void onTick() {
+      if (mc.field_1687 == null || mc.field_1724 == null) {
+         return;
+      }
 
-            ThreatLevel level = analyzeThreat(player, mc.player);
-            if (level.ordinal() > currentThreat.ordinal()) {
-                currentThreat = level;
-                threatPlayer = player;
-                threatStartTime = System.currentTimeMillis();
-                estimatedDamage = calculateDamage(player);
-                impactDirection = getImpactDirection(player, mc.player);
-            }
-        }
+      double rangeSq = (double)(this.detectionRange.get() * this.detectionRange.get());
+      ThreatLevel best = ThreatLevel.SAFE;
+      String bestName = null;
+      float bestDamage = 0.0F;
 
-        if (currentThreat != ThreatLevel.SAFE) {
-            handleThreat(mc);
-        } else {
-            HudManager.removeHud("MaceAlertTimer");
-        }
-    }
+      for (class_742 p : mc.field_1687.method_18456()) {
+         if (p == mc.field_1724 || mc.field_1724.method_5858(p) > rangeSq) {
+            continue;
+         }
+         ThreatLevel level = this.analyze(p);
+         if (level.ordinal() > best.ordinal()) {
+            best = level;
+            bestName = p.method_5477().getString();
+            bestDamage = this.estimateDamage(p);
+         }
+      }
 
-    private ThreatLevel analyzeThreat(PlayerEntity attacker, PlayerEntity target) {
-        // Check if player has mace
-        if (!hasMace(attacker)) {
-            return ThreatLevel.SAFE;
-        }
+      ThreatLevel previous = this.currentThreat;
+      this.currentThreat = best;
+      this.threatName = bestName;
+      this.estimatedDamage = bestDamage;
 
-        Vec3d velocity = attacker.getVelocity();
-        double distance = target.distanceTo(attacker);
+      if (this.sound.get() && best != ThreatLevel.SAFE && best.ordinal() > previous.ordinal()) {
+         float pitch = 1.0F + (float)best.ordinal() * 0.25F;
+         mc.field_1724.method_5783((class_3414)class_3417.field_14622.comp_349(), 0.7F, pitch);
+      }
+   }
 
-        // WATCH: Enemy gaining height with mace
-        if (velocity.y > 0.15 && hasWeaponInHand(attacker)) {
-            return ThreatLevel.WATCH;
-        }
+   private ThreatLevel analyze(class_742 attacker) {
+      if (!this.hasMace(attacker)) {
+         return ThreatLevel.SAFE;
+      }
 
-        // DANGER: Enemy falling from height
-        if (velocity.y < -0.3 && attacker.getY() - target.getY() > minHeight.getValue()) {
-            Vec3d toTarget = target.getPos().subtract(attacker.getPos()).normalize();
-            if (toTarget.dot(velocity.normalize()) > 0.5) {
-                return ThreatLevel.DANGER;
-            }
-        }
+      double velocityY = attacker.method_18798().field_1351;
+      double heightAbove = attacker.method_61411().field_1351 - mc.field_1724.method_61411().field_1351;
+      double distance = Math.sqrt(mc.field_1724.method_5858(attacker));
 
-        // IMPACT: Enemy very close and falling
-        if (distance < 10 && velocity.y < -0.5 && attacker.getY() > target.getY()) {
-            impactCountdown = calculateImpactTime(attacker, target);
-            return ThreatLevel.IMPACT;
-        }
+      if (velocityY < -0.5 && heightAbove > 0.5 && distance < 8.0) {
+         return ThreatLevel.IMPACT;
+      }
+      if (velocityY < -0.3 && heightAbove > (double)this.minHeight.get()) {
+         return ThreatLevel.DANGER;
+      }
+      if (velocityY > 0.15) {
+         return ThreatLevel.WATCH;
+      }
+      return ThreatLevel.SAFE;
+   }
 
-        return ThreatLevel.SAFE;
-    }
+   private boolean hasMace(class_742 player) {
+      return isMace(player.method_6047()) || isMace(player.method_6079());
+   }
 
-    private boolean hasMace(PlayerEntity player) {
-        return player.getMainHandStack().getItem() == Items.MACE ||
-               player.getOffHandStack().getItem() == Items.MACE;
-    }
+   private static boolean isMace(class_1799 stack) {
+      return !stack.method_7960()
+         && stack.method_7964().getString().toLowerCase(Locale.ROOT).contains("mace");
+   }
 
-    private boolean hasWeaponInHand(PlayerEntity player) {
-        return player.getMainHandStack().getItem() == Items.MACE ||
-               player.getMainHandStack().getItem() == Items.DIAMOND_SWORD ||
-               player.getMainHandStack().getItem() == Items.NETHERITE_SWORD;
-    }
+   private float estimateDamage(class_742 attacker) {
+      double speed = attacker.method_18798().method_1033();
+      return (float)(9.0 + speed * 5.0);
+   }
 
-    private float calculateDamage(PlayerEntity attacker) {
-        float baseDamage = 9; // Mace base damage
-        float velocity = (float) attacker.getVelocity().length();
-        return baseDamage + (velocity * 5);
-    }
+   public int[] onHudRender(class_332 ctx, int x, int y) {
+      List<String> lines = new ArrayList<>();
+      if (this.currentThreat == ThreatLevel.SAFE || this.threatName == null) {
+         lines.add("§aБезопасно");
+      } else {
+         lines.add(this.threatColor() + this.currentThreat.name());
+         lines.add("§7Игрок: §r" + this.threatName);
+         if (this.showDamage.get()) {
+            lines.add(String.format(Locale.ROOT, "§7Урон ~§c%.1f", this.estimatedDamage));
+         }
+      }
 
-    private Vec3d getImpactDirection(PlayerEntity attacker, PlayerEntity target) {
-        return target.getPos().subtract(attacker.getPos()).normalize();
-    }
+      return RenderUtil.panel(ctx, x, y, "Mace Alert", lines);
+   }
 
-    private int calculateImpactTime(PlayerEntity attacker, PlayerEntity target) {
-        double distance = attacker.distanceTo(target);
-        double velocity = Math.abs(attacker.getVelocity().y);
-        if (velocity < 0.1) return 0;
-        return (int) ((distance / velocity) * 20); // ticks
-    }
-
-    private void handleThreat(MinecraftClient mc) {
-        if (soundEnabled.getValue()) {
-            playThreatSound(mc);
-        }
-
-        if (autoShield.getValue() && currentThreat == ThreatLevel.IMPACT) {
-            activateShield(mc);
-        }
-
-        if (showTimer.getValue() && currentThreat == ThreatLevel.IMPACT) {
-            HudManager.addHud("MaceAlertTimer", (matrices, tickDelta) -> {
-                String timer = String.format("IMPACT IN: %dms", impactCountdown * 50);
-                // Render timer at center of screen
-            });
-        }
-
-        // Screen border color change
-        updateScreenBorder(mc);
-    }
-
-    private void playThreatSound(MinecraftClient mc) {
-        float pitch = 1.0f + (currentThreat.ordinal() * 0.2f);
-        switch (currentThreat) {
-            case WATCH:
-                mc.player.playSound(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 0.5f, pitch * 0.8f);
-                break;
-            case DANGER:
-                mc.player.playSound(SoundEvents.ENTITY_GUARDIAN_ATTACK, 0.6f, pitch * 0.9f);
-                break;
-            case IMPACT:
-                mc.player.playSound(SoundEvents.BLOCK_ANVIL_LAND, 1.0f, pitch);
-                break;
-            default:
-                break;
-        }
-    }
-
-    private void activateShield(MinecraftClient mc) {
-        if (mc.player != null && mc.options.useKey.isPressed() == false) {
-            mc.player.getOffHandStack().getItem(); // Check for shield
-            // Trigger right-click to raise shield
-        }
-    }
-
-    private void updateScreenBorder(MinecraftClient mc) {
-        // This would be implemented in rendering system
-        // Color changes based on threat level
-    }
-
-    @Override
-    public String getInfo() {
-        if (threatPlayer != null) {
-            return String.format("%s - %s", currentThreat.name(), String.format("%.1f", estimatedDamage) + " DMG");
-        }
-        return "Safe";
-    }
+   private String threatColor() {
+      switch (this.currentThreat) {
+         case WATCH:
+            return "§e";
+         case DANGER:
+            return "§6";
+         case IMPACT:
+            return "§c§l";
+         default:
+            return "§a";
+      }
+   }
 }

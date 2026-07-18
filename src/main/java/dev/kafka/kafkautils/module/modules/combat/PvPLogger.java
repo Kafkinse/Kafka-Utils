@@ -2,6 +2,7 @@ package dev.kafka.kafkautils.module.modules.combat;
 
 import dev.kafka.kafkautils.module.Category;
 import dev.kafka.kafkautils.module.Module;
+import dev.kafka.kafkautils.setting.BooleanSetting;
 import dev.kafka.kafkautils.util.ChatUtil;
 import java.util.HashMap;
 import java.util.Map;
@@ -11,12 +12,22 @@ import net.minecraft.class_1802;
 import net.minecraft.class_742;
 
 public class PvPLogger extends Module {
+   private final BooleanSetting logConsumables = this.add(new BooleanSetting("Log Potions/Apples", true));
+   private final BooleanSetting logTotems = this.add(new BooleanSetting("Log Totem Pops", true));
+
    private final Map<UUID, Boolean> wasUsing = new HashMap();
    private final Map<UUID, Integer> lastTimeLeft = new HashMap();
    private final Map<UUID, class_1792> lastItem = new HashMap();
 
    public PvPLogger() {
-      super("PvP Logger", "Logs fully-consumed potions/apples (by type).", Category.COMBAT);
+      super("PvP Logger", "Logs consumed potions/apples and totem pops.", Category.COMBAT);
+   }
+
+   /** Called by Totem Counter when a totem pops. Writes "<name> потерял тотем" to chat. */
+   public void logTotem(String name) {
+      if (this.isEnabled() && this.logTotems.get()) {
+         ChatUtil.raw("§5" + name + "§r потерял тотем");
+      }
    }
 
    protected void onEnable() {
@@ -40,7 +51,7 @@ public class PvPLogger extends Module {
                if (prev && !using) {
                   int tl = (Integer)this.lastTimeLeft.getOrDefault(id, 99);
                   class_1792 it = (class_1792)this.lastItem.get(id);
-                  if (tl <= 2 && it != null && isConsumable(it)) {
+                  if (this.logConsumables.get() && tl <= 2 && it != null && isConsumable(it)) {
                      String var10000 = p.method_5477().getString();
                      ChatUtil.raw("§d" + var10000 + "§r использовал §d" + it.method_63680().getString());
                   }

@@ -45,7 +45,7 @@ public class PearlTracker extends Module implements HudModule {
                UUID id = p.method_5667();
                boolean hasPearl = false;
                for (int i = 0; i < 9; i++) {
-                  net.minecraft.class_1799 stack = p.method_7371().method_5438(i);
+                  net.minecraft.class_1799 stack = p.method_31548().method_5438(i);
                   if (!stack.method_7960() && stack.method_7909() == net.minecraft.class_1802.field_8833) {
                      hasPearl = true;
                      break;

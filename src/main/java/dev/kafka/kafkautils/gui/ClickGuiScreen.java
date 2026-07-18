@@ -10,7 +10,6 @@ import dev.kafka.kafkautils.setting.ModeSetting;
 import dev.kafka.kafkautils.setting.NumberSetting;
 import dev.kafka.kafkautils.setting.Setting;
 import dev.kafka.kafkautils.setting.StringSetting;
-import dev.kafka.kafkautils.util.StaffCounter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,60 +19,87 @@ import net.minecraft.class_342;
 import net.minecraft.class_4185;
 import net.minecraft.class_437;
 
+/**
+ * Tabbed, themed ClickGUI: a header bar, a row of category tabs, and the selected
+ * category's modules laid out in two balanced columns with expandable settings.
+ */
 public class ClickGuiScreen extends class_437 {
-   private static final int COL_WIDTH = 152;
-   private static final int COL_GAP = 12;
-   private static final int START_X = 20;
-   private static final int HEADER_Y = 38;
-   private static final Map<String, Boolean> expanded = new HashMap();
+   private static final int COL_A = 20;
+   private static final int COL_B = 232;
+   private static final int COL_W = 200;
+   private static final int TAB_X = 20;
+   private static final int TAB_Y = 34;
+   private static final int TAB_W = 90;
+   private static final int TAB_H = 18;
+   private static final int TAB_GAP = 4;
+
+   private static final int BG = 0xE6101014;
+   private static final int HEADER = 0xFF1B1030;
+   private static final int ACCENT = 0xFFB388FF;
+   private static final int PANEL = 0x33000000;
+
+   private static final Map<String, Boolean> expanded = new HashMap<>();
+   private static int selectedCategory = 0;
 
    public ClickGuiScreen() {
       super(class_2561.method_43470("Kafka Utils"));
    }
 
    protected void method_25426() {
-      int x = 20;
-
-      for(Category category : Category.values()) {
-         int y = 56;
-
-         for(Module module : ModuleManager.getByCategory(category)) {
-            boolean hasSettings = !module.getSettings().isEmpty();
-            int toggleW = hasSettings ? 136 : 152;
-            class_4185 toggle = class_4185.method_46430(this.moduleLabel(module), (b) -> {
-               module.toggle();
-               b.method_25355(this.moduleLabel(module));
-               ConfigManager.save();
-            }).method_46434(x, y, toggleW, 16).method_46431();
-            this.method_37063(toggle);
-            if (hasSettings) {
-               boolean exp = (Boolean)expanded.getOrDefault(module.getName(), false);
-               this.method_37063(class_4185.method_46430(class_2561.method_43470(exp ? "−" : "+"), (b) -> {
-                  expanded.put(module.getName(), !exp);
-                  this.method_41843();
-               }).method_46434(x + 152 - 14, y, 14, 16).method_46431());
-            }
-
-            y += 18;
-            if (hasSettings && (Boolean)expanded.getOrDefault(module.getName(), false)) {
-               for(Setting s : module.getSettings()) {
-                  y = this.addSetting(x + 8, y, 144, s);
-               }
-            }
-
-            y += 5;
-         }
-
-         x += 164;
+      Category[] cats = Category.values();
+      if (selectedCategory >= cats.length) {
+         selectedCategory = 0;
       }
 
-      class_4185 hudBtn = class_4185.method_46430(class_2561.method_43470("§d§lHUD Editor"), (b) -> {
+      for (int i = 0; i < cats.length; ++i) {
+         final int idx = i;
+         String label = (i == selectedCategory ? "§d§l" : "§7") + cats[i].getTitle();
+         this.method_37063(class_4185.method_46430(class_2561.method_43470(label), (b) -> {
+            selectedCategory = idx;
+            this.method_41843();
+         }).method_46434(TAB_X + i * (TAB_W + TAB_GAP), TAB_Y, TAB_W, TAB_H).method_46431());
+      }
+
+      int top = TAB_Y + TAB_H + 12;
+      int[] colX = {COL_A, COL_B};
+      int[] colY = {top, top};
+
+      for (Module module : ModuleManager.getByCategory(cats[selectedCategory])) {
+         int c = colY[0] <= colY[1] ? 0 : 1;
+         int x = colX[c];
+         int y = colY[c];
+
+         boolean hasSettings = !module.getSettings().isEmpty();
+         int toggleW = hasSettings ? COL_W - 14 : COL_W;
+         this.method_37063(class_4185.method_46430(this.moduleLabel(module), (b) -> {
+            module.toggle();
+            b.method_25355(this.moduleLabel(module));
+            ConfigManager.save();
+         }).method_46434(x, y, toggleW, 16).method_46431());
+
+         if (hasSettings) {
+            boolean exp = expanded.getOrDefault(module.getName(), false);
+            this.method_37063(class_4185.method_46430(class_2561.method_43470(exp ? "§d−" : "§a+"), (b) -> {
+               expanded.put(module.getName(), !exp);
+               this.method_41843();
+            }).method_46434(x + COL_W - 12, y, 12, 16).method_46431());
+         }
+
+         y += 18;
+         if (hasSettings && expanded.getOrDefault(module.getName(), false)) {
+            for (Setting s : module.getSettings()) {
+               y = this.addSetting(x + 8, y, COL_W - 16, s);
+            }
+         }
+         y += 6;
+         colY[c] = y;
+      }
+
+      this.method_37063(class_4185.method_46430(class_2561.method_43470("§d§lHUD Editor"), (b) -> {
          if (this.field_22787 != null) {
             this.field_22787.method_1507(new HudEditorScreen());
          }
-
-      }).method_46434(20, this.field_22790 - 26, 120, 18).method_46431();
-      this.method_37063(hudBtn);
+      }).method_46434(20, this.field_22790 - 24, 120, 18).method_46431());
    }
 
    private int addSetting(int x, int y, int w, Setting s) {
@@ -103,7 +129,7 @@ public class ClickGuiScreen extends class_437 {
             class_342 field = new class_342(this.field_22793, x, y, w, 14, class_2561.method_43470(s.getName()));
             field.method_1880(256);
             field.method_1852(ss.get());
-            field.method_47404(class_2561.method_43470("§7" + s.getName() + " (через запятую)"));
+            field.method_47404(class_2561.method_43470("§7" + s.getName()));
             field.method_1863((v) -> {
                ss.set(v);
                ConfigManager.save();
@@ -115,24 +141,23 @@ public class ClickGuiScreen extends class_437 {
          }
       } else {
          List<String> vals = list.values();
-
-         for(int i = 0; i < vals.size(); ++i) {
+         for (int i = 0; i < vals.size(); ++i) {
+            int idx = i;
             class_342 field = new class_342(this.field_22793, x, y, w - 16, 14, class_2561.method_43470(s.getName()));
             field.method_1880(128);
-            field.method_1852((String)vals.get(i));
+            field.method_1852(vals.get(i));
             field.method_1863((v) -> {
-               list.setEntry(i, v);
+               list.setEntry(idx, v);
                ConfigManager.save();
             });
             this.method_37063(field);
             this.method_37063(class_4185.method_46430(class_2561.method_43470("§cx"), (b) -> {
-               list.removeEntry(i);
+               list.removeEntry(idx);
                ConfigManager.save();
                this.method_41843();
             }).method_46434(x + w - 14, y, 14, 14).method_46431());
             y += 16;
          }
-
          this.method_37063(class_4185.method_46430(class_2561.method_43470("§a+ " + s.getName()), (b) -> {
             list.addEntry("");
             ConfigManager.save();
@@ -143,49 +168,40 @@ public class ClickGuiScreen extends class_437 {
    }
 
    private class_2561 moduleLabel(Module m) {
-      String state = m.isEnabled() ? "§a● " : "§7○ ";
+      String state = m.isEnabled() ? "§a● " : "§8○ ";
       return class_2561.method_43470(state + "§r" + m.getName());
    }
 
    private class_2561 boolLabel(BooleanSetting s) {
-      String v = s.get() ? "§aON" : "§7OFF";
-      String var10000 = s.getName();
-      return class_2561.method_43470("§r" + var10000 + ": " + v);
+      return class_2561.method_43470("§r" + s.getName() + ": " + (s.get() ? "§aВКЛ" : "§8ВЫКЛ"));
    }
 
    private class_2561 numLabel(NumberSetting s) {
-      String var10000 = s.getName();
-      return class_2561.method_43470("§r" + var10000 + ": §d" + s.get());
+      return class_2561.method_43470("§r" + s.getName() + ": §d" + s.get());
    }
 
    private class_2561 modeLabel(ModeSetting s) {
-      String var10000 = s.getName();
-      return class_2561.method_43470("§r" + var10000 + ": §d" + s.get());
+      return class_2561.method_43470("§r" + s.getName() + ": §d" + s.get());
    }
 
    public void method_25394(class_332 ctx, int mouseX, int mouseY, float delta) {
-      ctx.method_25294(0, 0, this.field_22789, this.field_22790, -803995624);
-      ctx.method_51433(this.field_22793, "§5§lKafka Utils §r§7— ESC to close", 20, 14, -1517825, true);
-      int[] sc = StaffCounter.counts();
-      ctx.method_51433(this.field_22793, "§7Стафф онлайн:  §dⒽ §r" + sc[0] + "§d   Ⓜ §r" + sc[1] + "§d   Ⓐ §r" + sc[2], 240, 14, -1517825, true);
-      int sy = 26;
+      int w = this.field_22789;
+      int h = this.field_22790;
+      ctx.method_25294(0, 0, w, h, BG);
+      ctx.method_25294(0, 0, w, 30, HEADER);
+      ctx.method_25294(0, 29, w, 30, ACCENT);
+      ctx.method_51433(this.field_22793, "§5§lKafka §d§lUtils", 20, 11, 0xFFD9C2FF, true);
+      ctx.method_51433(this.field_22793, "§7ESC", w - 32, 11, 0xFF9A8FB0, true);
 
-      for(String n : StaffCounter.staffNames()) {
-         ctx.method_51433(this.field_22793, "§d" + n, 240, sy, -1517825, true);
-         sy += 11;
-         if (sy > this.field_22790 - 40) {
-            break;
+      Category[] cats = Category.values();
+      for (int i = 0; i < cats.length; ++i) {
+         if (i == selectedCategory) {
+            int tx = TAB_X + i * (TAB_W + TAB_GAP);
+            ctx.method_25294(tx, TAB_Y + TAB_H, tx + TAB_W, TAB_Y + TAB_H + 2, ACCENT);
          }
       }
 
-      int x = 20;
-
-      for(Category category : Category.values()) {
-         ctx.method_25294(x, 38, x + 152, 52, -12976032);
-         ctx.method_51433(this.field_22793, "§d§l" + category.getTitle(), x + 4, 41, -1517825, false);
-         x += 164;
-      }
-
+      ctx.method_25294(14, TAB_Y + TAB_H + 8, w - 14, h - 30, PANEL);
       super.method_25394(ctx, mouseX, mouseY, delta);
    }
 

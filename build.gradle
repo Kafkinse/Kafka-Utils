@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '1.9-SNAPSHOT'
+    id 'fabric-loom' version '1.14-SNAPSHOT'
     id 'maven-publish'
 }
 
@@ -11,12 +11,12 @@ base {
 }
 
 loom {
-    splitEnvironmentSourceSets()
-
+    // This is a client-only mod and all of its sources (including client-only
+    // Minecraft references) live in src/main, so the environments must NOT be
+    // split — otherwise client classes are unavailable to the common source set.
     mods {
         "kafkautils" {
             sourceSet sourceSets.main
-            sourceSet sourceSets.client
         }
     }
 }
@@ -28,7 +28,9 @@ repositories {
 
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    // The sources are written against intermediary names (class_310, method_1551, ...),
+    // so build against intermediary mappings rather than yarn.
+    mappings "net.fabricmc:intermediary:${project.minecraft_version}:v2"
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 }
@@ -49,6 +51,7 @@ processResources {
 def targetJavaVersion = 21
 tasks.withType(JavaCompile).configureEach {
     it.options.release = targetJavaVersion
+    it.options.encoding = "UTF-8"
 }
 
 java {

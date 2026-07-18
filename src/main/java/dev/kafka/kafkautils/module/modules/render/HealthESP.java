@@ -16,15 +16,15 @@ public class HealthESP extends Module implements WorldRenderModule {
 
    public void onWorldRender(WorldRenderContext ctx) {
       if (mc.field_1687 != null && mc.field_1724 != null) {
-         class_243 cameraPos = mc.field_1769.method_19325();
+         class_243 cameraPos = mc.field_1724.method_33571();
 
          for(class_742 p : mc.field_1687.method_18456()) {
             if (p != mc.field_1724) {
                float maxHp = p.method_6063();
-               if (!(maxHp <= 0.0F)) continue;
+               if (maxHp <= 0.0F) continue;
 
                float hpFrac = Math.max(0.0F, Math.min(1.0F, p.method_6032() / maxHp));
-               class_243 pos = p.method_73189();
+               class_243 pos = p.method_61411();
                double topY = pos.field_1351 + (double)p.method_17682() + 0.5;
 
                // Calculate direction from camera to player for billboard effect
@@ -67,7 +67,7 @@ public class HealthESP extends Module implements WorldRenderModule {
                Render3D.drawFilled(fg, hpColor(hpFrac));
 
                // Armor bar below health
-               float armor = p.method_5825();
+               float armor = p.method_6096();
                if (armor > 0.0F) {
                   float maxArmor = 20.0F;
                   float armorFrac = Math.min(1.0F, armor / maxArmor);

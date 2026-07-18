@@ -4,23 +4,27 @@ import dev.kafka.kafkautils.module.Category;
 import dev.kafka.kafkautils.module.Module;
 import dev.kafka.kafkautils.module.WorldRenderModule;
 import dev.kafka.kafkautils.util.Render3D;
+import java.util.Locale;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.minecraft.class_1304;
+import net.minecraft.class_1799;
 import net.minecraft.class_238;
 import net.minecraft.class_243;
 import net.minecraft.class_742;
 
 public class ArmorDurabilityESP extends Module implements WorldRenderModule {
+
    public ArmorDurabilityESP() {
       super("Armor Durability ESP", "Shows armor durability above enemies' heads, visible through walls.", Category.RENDER);
    }
 
    public void onWorldRender(WorldRenderContext ctx) {
       if (mc.field_1687 != null && mc.field_1724 != null) {
-         class_243 cameraPos = mc.field_1769.method_19325();
+         class_243 cameraPos = mc.field_1724.method_33571();
 
          for(class_742 p : mc.field_1687.method_18456()) {
             if (p != mc.field_1724) {
-               class_243 pos = p.method_73189();
+               class_243 pos = p.method_61411();
                double topY = pos.field_1351 + (double)p.method_17682() + 0.7;
 
                class_243 toPlayer = new class_243(
@@ -33,9 +37,13 @@ public class ArmorDurabilityESP extends Module implements WorldRenderModule {
                double startY = topY;
 
                // Iterate armor slots
-               for (net.minecraft.class_1799 stack : p.method_6136()) {
-                  if (!stack.method_7960() && stack.method_7909().method_63680().method_63700().contains("armor")) {
-                     int dmg = stack.method_7929();
+               for (class_1304 slot : class_1304.values()) {
+                  if (!slot.method_46643()) {
+                     continue;
+                  }
+                  class_1799 stack = p.method_6118(slot);
+                  if (!stack.method_7960()) {
+                     int dmg = stack.method_7919();
                      int maxDmg = getMaxDurability(stack);
                      if (maxDmg > 0) {
                         float frac = Math.max(0.0F, Math.min(1.0F, 1.0F - (float)dmg / (float)maxDmg));
@@ -71,8 +79,8 @@ public class ArmorDurabilityESP extends Module implements WorldRenderModule {
       }
    }
 
-   private static int getMaxDurability(net.minecraft.class_1799 stack) {
-      String name = stack.method_7909().method_63680().method_63700();
+   private static int getMaxDurability(class_1799 stack) {
+      String name = stack.method_7964().getString().toLowerCase(Locale.ROOT);
       if (name.contains("netherite")) return 407;
       if (name.contains("diamond")) return 264;
       if (name.contains("iron")) return 165;
