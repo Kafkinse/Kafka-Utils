@@ -18,8 +18,8 @@ import java.util.concurrent.*;
  *   client -> server: auth|name|key ; msg|to|text ; gmsg|group|text ;
  *                     gcreate|group ; gadd|group|nick
  *   server -> client: ok ; err|reason ; msg|from|text|ts ;
- *                     gmsg|group|from|text|ts ; users|a,b ; join|n ; left|n ;
- *                     groups|g1,g2
+ *                     gmsg|group|from|text|ts ; gsys|group|text ; users|a,b ;
+ *                     join|n ; left|n ; groups|g1,g2
  * Groups are persisted to groups.txt next to this file.
  */
 public class KafkaRelay {
@@ -127,11 +127,18 @@ public class KafkaRelay {
             if (nick.isEmpty() || nick.length() > 16) return;
             if (g.members.add(nick.toLowerCase())) {
                saveGroups();
-               c.send("err|" + enc(nick + " добавлен в «" + g.name + "»"));
+               // Tell every member of the group who added whom.
+               String note = c.name + " добавил " + nick + " в группу «" + g.name + "»";
+               String sys = "gsys|" + enc(g.name) + "|" + enc(note);
+               for (String m : g.members) {
+                  Client dst2 = CLIENTS.get(m);
+                  if (dst2 != null) {
+                     dst2.send(sys);
+                  }
+               }
                Client dst = CLIENTS.get(nick.toLowerCase());
                if (dst != null) {
                   dst.send("groups|" + enc(String.join(",", groupsOf(dst.name))));
-                  dst.send("err|" + enc("вас добавили в группу «" + g.name + "»"));
                }
             } else {
                c.send("err|" + enc(nick + " уже в группе"));

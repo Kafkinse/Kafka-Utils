@@ -103,14 +103,35 @@ public class Messenger extends Module {
          case "msg" -> {
             if (p.length >= 3) {
                String from = dec(p[1]);
-               this.incoming("@" + from, from, dec(p[2]));
+               if (!from.equalsIgnoreCase(this.myName())) {
+                  this.incoming("@" + from, from, dec(p[2]));
+               }
             }
          }
          case "gmsg" -> {
             if (p.length >= 4) {
                String group = dec(p[1]);
+               String from = dec(p[2]);
                this.groups.add(group);
-               this.incoming("#" + group, dec(p[2]), dec(p[3]));
+               // The relay echoes our own group message back to us — ignore it,
+               // we already stored it locally when sending, so it isn't "unread".
+               if (!from.equalsIgnoreCase(this.myName())) {
+                  this.incoming("#" + group, from, dec(p[3]));
+               }
+            }
+         }
+         case "gsys" -> {
+            if (p.length >= 3) {
+               String group = dec(p[1]);
+               this.groups.add(group);
+               this.thread("#" + group); // make sure the tab exists
+               String text = dec(p[2]);
+               Msg m = new Msg("§7*", text, System.currentTimeMillis(), false);
+               this.thread("#" + group).add(m);
+               this.persist("#" + group, m);
+               if (this.notify.get()) {
+                  ChatUtil.raw("§d✦ §7(#" + group + ") " + text);
+               }
             }
          }
          case "users" -> {

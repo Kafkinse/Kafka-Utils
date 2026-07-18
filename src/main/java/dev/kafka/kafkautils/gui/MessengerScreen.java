@@ -38,6 +38,7 @@ public class MessengerScreen extends class_437 {
    private class_342 input;
    private class_342 dmField;
    private String note = "";
+   private int scroll; // blocks scrolled up from the newest (0 = latest)
 
    public MessengerScreen() {
       super(class_2561.method_43470("Мессенджер"));
@@ -57,6 +58,7 @@ public class MessengerScreen extends class_437 {
          String label = (k.equals(selected) ? "§d§l" : "§7") + key + (un > 0 ? " §c(" + un + ")" : "");
          this.method_37063(class_4185.method_46430(class_2561.method_43470(label), (b) -> {
             selected = k;
+            this.scroll = 0;
             this.msg.openThread(k);
             this.method_41843();
          }).method_46434(10, y, LEFT_W - 6, 14).method_46431());
@@ -107,6 +109,18 @@ public class MessengerScreen extends class_437 {
       return super.method_25404(key);
    }
 
+   /** Wheel scrolls the message history of the open thread. */
+   public boolean method_25401(double mouseX, double mouseY, double horiz, double vert) {
+      if (selected != null && vert != 0) {
+         this.scroll += (int) Math.round(vert) * 3;
+         if (this.scroll < 0) {
+            this.scroll = 0;
+         }
+         return true;
+      }
+      return super.method_25401(mouseX, mouseY, horiz, vert);
+   }
+
    private void doOpenDm() {
       if (this.msg == null) {
          return;
@@ -119,6 +133,7 @@ public class MessengerScreen extends class_437 {
          return;
       }
       selected = "@" + n;
+      this.scroll = 0;
       this.msg.messages(selected); // create the thread
       this.msg.openThread(selected);
       this.dmField.method_1852("");
@@ -139,6 +154,7 @@ public class MessengerScreen extends class_437 {
       }
       this.msg.createGroup(n);
       selected = "#" + n;
+      this.scroll = 0;
       this.dmField.method_1852("");
       this.note = "§aгруппа «" + n + "» создана";
       this.rebuildKeepingDraft();
@@ -180,6 +196,7 @@ public class MessengerScreen extends class_437 {
       }
       this.note = this.msg.send(selected, text);
       this.input.method_1852("");
+      this.scroll = 0;
       this.method_41843();
    }
 
@@ -194,6 +211,9 @@ public class MessengerScreen extends class_437 {
 
       ctx.method_25294(6, 36, LEFT_W + 4, h - 52, PANEL);
       ctx.method_25294(LEFT_W + 8, 36, w - 8, h - 30, PANEL);
+
+      // Hint above the name box so the action buttons are self-explanatory.
+      ctx.method_51433(this.field_22793, "§8ник→ЛС · имя→Группа", 10, h - 74, 0xFF8A7FA0, true);
 
       super.method_25394(ctx, mouseX, mouseY, delta);
 
@@ -237,14 +257,21 @@ public class MessengerScreen extends class_437 {
       for (int i = 0; i < blocks.size(); ++i) {
          heights[i] = blocks.get(i)[0].equals("h") ? 14 : 10;
       }
-      int start = blocks.size();
+      if (this.scroll > blocks.size() - 1) {
+         this.scroll = Math.max(0, blocks.size() - 1);
+      }
+      int end = Math.max(1, blocks.size() - this.scroll);
+      int start = end;
       int used = 0;
       while (start > 0 && used + heights[start - 1] <= bottom - top) {
          --start;
          used += heights[start];
       }
+      if (this.scroll > 0) {
+         ctx.method_51433(this.field_22793, "§8▼ к новым — колесо вниз", areaX, bottom + 1, 0xFF8A7FA0, true);
+      }
       int yy = top;
-      for (int i = start; i < blocks.size(); ++i) {
+      for (int i = start; i < end; ++i) {
          Object[] b = blocks.get(i);
          if (b[0].equals("h")) {
             yy += 2;
