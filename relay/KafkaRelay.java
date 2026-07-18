@@ -15,10 +15,14 @@ import java.util.concurrent.*;
  * e.g.  java KafkaRelay.java 8765 mySecretKey123
  *
  * Protocol: '|'-separated fields, each URL-encoded (UTF-8).
- *   client -> server: auth|name|key ; msg|to|text ; gmsg|group|text ;
- *                     gcreate|group ; gadd|group|nick
- *   server -> client: ok ; err|reason ; msg|from|text|ts ;
- *                     gmsg|group|from|text|ts ; gsys|group|text ; users|a,b ;
+ *   client -> server: auth|name|key ; msg|to|text|id ; gmsg|group|text|id ;
+ *                     gcreate|group ; gadd|group|nick ; gleave|group ;
+ *                     gwho|group ; del|dest|id ; edt|dest|id|text ; typ|dest
+ *                     (dest is @nick or #group)
+ *   server -> client: ok ; err|reason ; msg|from|text|ts|id ;
+ *                     gmsg|group|from|text|ts|id ; gsys|group|text ;
+ *                     del|threadKey|id ; edt|threadKey|id|text ;
+ *                     typ|threadKey|who ; gmembers|group|a,b ; users|a,b ;
  *                     join|n ; left|n ; groups|g1,g2
  * Groups are persisted to groups.txt next to this file.
  */
@@ -91,21 +95,55 @@ public class KafkaRelay {
          case "msg" -> {
             if (p.length < 3) return;
             String to = dec(p[1]);
+            String id = p.length >= 4 ? p[3] : "";
             Client dst = CLIENTS.get(to.toLowerCase());
             if (dst == null) { c.send("err|" + enc(to + " не в сети (релей)")); return; }
-            dst.send("msg|" + enc(c.name) + "|" + p[2] + "|" + System.currentTimeMillis());
+            dst.send("msg|" + enc(c.name) + "|" + p[2] + "|" + System.currentTimeMillis() + "|" + id);
          }
          case "gmsg" -> {
             if (p.length < 3) return;
             Group g = GROUPS.get(dec(p[1]).toLowerCase());
             if (g == null || !g.members.contains(c.name.toLowerCase())) { c.send("err|" + enc("нет такой группы")); return; }
-            String out = "gmsg|" + enc(g.name) + "|" + enc(c.name) + "|" + p[2] + "|" + System.currentTimeMillis();
+            String id = p.length >= 4 ? p[3] : "";
+            String out = "gmsg|" + enc(g.name) + "|" + enc(c.name) + "|" + p[2] + "|" + System.currentTimeMillis() + "|" + id;
             for (String m : g.members) {
                Client dst = CLIENTS.get(m);
                if (dst != null && dst != c) {
                   dst.send(out);
                }
             }
+         }
+         case "del" -> {
+            if (p.length < 3) return;
+            routeToThread(c, dec(p[1]), "del|", "|" + p[2]);
+         }
+         case "edt" -> {
+            if (p.length < 4) return;
+            routeToThread(c, dec(p[1]), "edt|", "|" + p[2] + "|" + p[3]);
+         }
+         case "typ" -> {
+            if (p.length < 2) return;
+            routeToThread(c, dec(p[1]), "typ|", "|" + enc(c.name));
+         }
+         case "gleave" -> {
+            if (p.length < 2) return;
+            Group g = GROUPS.get(dec(p[1]).toLowerCase());
+            if (g == null) return;
+            if (g.members.remove(c.name.toLowerCase())) {
+               saveGroups();
+               String sys = "gsys|" + enc(g.name) + "|" + enc(c.name + " вышел из группы «" + g.name + "»");
+               for (String m : g.members) {
+                  Client d = CLIENTS.get(m);
+                  if (d != null) { d.send(sys); }
+               }
+               c.send("groups|" + enc(String.join(",", groupsOf(c.name))));
+            }
+         }
+         case "gwho" -> {
+            if (p.length < 2) return;
+            Group g = GROUPS.get(dec(p[1]).toLowerCase());
+            if (g == null || !g.members.contains(c.name.toLowerCase())) return;
+            c.send("gmembers|" + enc(g.name) + "|" + enc(String.join(",", g.members)));
          }
          case "gcreate" -> {
             if (p.length < 2) return;
@@ -149,6 +187,38 @@ public class KafkaRelay {
    }
 
    // --- helpers -----------------------------------------------------------
+
+   /**
+    * Routes a per-thread event (delete/edit/typing) to the other side. For a DM
+    * ({@code @nick}) the line goes to that peer, with the thread key rewritten to
+    * the sender's handle (so the peer finds it under {@code @sender}). For a
+    * group ({@code #group}) it goes to every other member. The line is built as
+    * {@code prefix + encodedThreadKey + suffix} — never String.format, since the
+    * suffix may hold URL-encoded text containing '%'.
+    */
+   private static void routeToThread(Client from, String dest, String prefix, String suffix) {
+      if (dest == null || dest.isEmpty()) {
+         return;
+      }
+      if (dest.startsWith("@")) {
+         Client peer = CLIENTS.get(dest.substring(1).toLowerCase());
+         if (peer != null) {
+            peer.send(prefix + enc("@" + from.name) + suffix);
+         }
+      } else if (dest.startsWith("#")) {
+         Group g = GROUPS.get(dest.substring(1).toLowerCase());
+         if (g == null || !g.members.contains(from.name.toLowerCase())) {
+            return;
+         }
+         String line = prefix + enc(dest) + suffix;
+         for (String m : g.members) {
+            Client d = CLIENTS.get(m);
+            if (d != null && d != from) {
+               d.send(line);
+            }
+         }
+      }
+   }
 
    private static List<String> onlineNames() {
       List<String> out = new ArrayList<>();
