@@ -199,6 +199,8 @@ public class Messenger extends Module {
          return;
       }
       RelayClient.send("gcreate|" + RelayClient.enc(name));
+      this.groups.add(name);
+      this.thread("#" + name); // show the tab immediately; relay will confirm
    }
 
    public void addToGroup(String nick, String group) {

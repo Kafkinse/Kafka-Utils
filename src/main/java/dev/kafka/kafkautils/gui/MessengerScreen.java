@@ -8,6 +8,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import net.minecraft.class_11908;
 import net.minecraft.class_2561;
 import net.minecraft.class_310;
 import net.minecraft.class_332;
@@ -16,6 +17,7 @@ import net.minecraft.class_4185;
 import net.minecraft.class_437;
 import net.minecraft.class_640;
 import net.minecraft.class_7532;
+import org.lwjgl.glfw.GLFW;
 
 /**
  * Discord-style messenger window: threads on the left (groups #, DMs @ with
@@ -61,21 +63,22 @@ public class MessengerScreen extends class_437 {
          y += 16;
       }
 
-      // Left bottom: start a new DM.
-      int dmY = this.field_22790 - 46;
-      this.dmField = new class_342(this.field_22793, 10, dmY, LEFT_W - 46, 14, class_2561.method_43470("ник"));
-      this.dmField.method_1880(16);
-      this.dmField.method_47404(class_2561.method_43470("§7ник…"));
+      // Left bottom: name field + actions (open DM, create group, add member).
+      int nameY = this.field_22790 - 62;
+      this.dmField = new class_342(this.field_22793, 10, nameY, LEFT_W - 6, 14, class_2561.method_43470("ник / группа"));
+      this.dmField.method_1880(24);
+      this.dmField.method_47404(class_2561.method_43470("§7ник / группа…"));
       this.method_37063(this.dmField);
-      this.method_37063(class_4185.method_46430(class_2561.method_43470("§a+ЛС"), (b) -> {
-         String n = this.dmField.method_1882().trim();
-         if (!n.isEmpty()) {
-            selected = "@" + n;
-            this.msg.messages(selected); // create the thread
-            this.dmField.method_1852("");
-            this.method_41843();
-         }
-      }).method_46434(LEFT_W - 32, dmY, 36, 14).method_46431());
+
+      int actY = this.field_22790 - 44;
+      this.method_37063(class_4185.method_46430(class_2561.method_43470("§aЛС"), (b) -> this.doOpenDm())
+         .method_46434(10, actY, 44, 14).method_46431());
+      this.method_37063(class_4185.method_46430(class_2561.method_43470("§bГруппа"), (b) -> this.doCreateGroup())
+         .method_46434(58, actY, 54, 14).method_46431());
+      if (selected != null && selected.startsWith("#")) {
+         this.method_37063(class_4185.method_46430(class_2561.method_43470("§d+уч"), (b) -> this.doAddMember())
+            .method_46434(116, actY, 34, 14).method_46431());
+      }
 
       // Bottom: message input + send.
       int inY = this.field_22790 - 24;
@@ -85,6 +88,86 @@ public class MessengerScreen extends class_437 {
       this.method_37063(this.input);
       this.method_37063(class_4185.method_46430(class_2561.method_43470("§aОтправить"), (b) -> this.doSend())
          .method_46434(this.field_22789 - 82, inY, 72, 16).method_46431());
+
+      // Put the cursor in the message box right away — no click needed.
+      this.method_48265(this.input);
+   }
+
+   /** Enter sends the current message (or opens the DM if the name box is active). */
+   public boolean method_25404(class_11908 key) {
+      int code = key.comp_4795();
+      if (code == GLFW.GLFW_KEY_ENTER || code == GLFW.GLFW_KEY_KP_ENTER) {
+         if (this.dmField != null && this.dmField.method_25370() && !this.dmField.method_1882().isBlank()) {
+            this.doOpenDm();
+         } else {
+            this.doSend();
+         }
+         return true;
+      }
+      return super.method_25404(key);
+   }
+
+   private void doOpenDm() {
+      if (this.msg == null) {
+         return;
+      }
+      String n = this.dmField.method_1882().trim();
+      if (n.startsWith("@") || n.startsWith("#")) {
+         n = n.substring(1);
+      }
+      if (n.isEmpty()) {
+         return;
+      }
+      selected = "@" + n;
+      this.msg.messages(selected); // create the thread
+      this.msg.openThread(selected);
+      this.dmField.method_1852("");
+      this.rebuildKeepingDraft();
+   }
+
+   private void doCreateGroup() {
+      if (this.msg == null) {
+         return;
+      }
+      String n = this.dmField.method_1882().trim();
+      if (n.startsWith("#") || n.startsWith("@")) {
+         n = n.substring(1);
+      }
+      if (n.isEmpty()) {
+         this.note = "§cвведи имя группы слева";
+         return;
+      }
+      this.msg.createGroup(n);
+      selected = "#" + n;
+      this.dmField.method_1852("");
+      this.note = "§aгруппа «" + n + "» создана";
+      this.rebuildKeepingDraft();
+   }
+
+   /** Rebuilds the screen (e.g. after a new tab appears) without losing a half-typed message. */
+   private void rebuildKeepingDraft() {
+      String draft = this.input != null ? this.input.method_1882() : "";
+      this.method_41843();
+      if (this.input != null) {
+         this.input.method_1852(draft);
+      }
+   }
+
+   private void doAddMember() {
+      if (this.msg == null || selected == null || !selected.startsWith("#")) {
+         return;
+      }
+      String n = this.dmField.method_1882().trim();
+      if (n.startsWith("@")) {
+         n = n.substring(1);
+      }
+      if (n.isEmpty()) {
+         this.note = "§cвведи ник участника слева";
+         return;
+      }
+      this.msg.addToGroup(n, selected.substring(1));
+      this.dmField.method_1852("");
+      this.note = "§a+" + n + " → " + selected;
    }
 
    private void doSend() {
