@@ -6,6 +6,7 @@ import dev.kafka.kafkautils.config.ConfigManager;
 import dev.kafka.kafkautils.gui.AutoTeleportScreen;
 import dev.kafka.kafkautils.gui.ClickGuiScreen;
 import dev.kafka.kafkautils.gui.EnchantHelperScreen;
+import dev.kafka.kafkautils.gui.FastSwapScreen;
 import dev.kafka.kafkautils.gui.MessengerScreen;
 import dev.kafka.kafkautils.gui.PotionBrowserScreen;
 import dev.kafka.kafkautils.gui.PotionWheelScreen;
@@ -26,6 +27,8 @@ import dev.kafka.kafkautils.module.modules.chat.PrivateMessages;
 import dev.kafka.kafkautils.module.modules.combat.AutoPot;
 import dev.kafka.kafkautils.module.modules.combat.BrewHelper;
 import dev.kafka.kafkautils.module.modules.combat.EnchantHelper;
+import dev.kafka.kafkautils.module.modules.combat.FastSwap;
+import dev.kafka.kafkautils.module.modules.combat.QuickPearl;
 import dev.kafka.kafkautils.util.Render3D;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
@@ -58,6 +61,8 @@ public class KafkaUtilsClient implements ClientModInitializer {
    private boolean throwKeyWasDown = false;
    private static class_304 potWheelKey;
    private boolean potWheelWasDown = false;
+   private static class_304 pearlKey;
+   private boolean pearlKeyWasDown = false;
 
    public void onInitializeClient() {
       ModuleManager.init();
@@ -67,6 +72,7 @@ public class KafkaUtilsClient implements ClientModInitializer {
       shareCoordsKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.share_coords", class_307.field_1668, -1, class_11900.field_62556));
       throwPotKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.throw_potion", class_307.field_1668, 82, class_11900.field_62556));
       potWheelKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.potion_wheel", class_307.field_1668, 86, class_11900.field_62556));
+      pearlKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.quick_pearl", class_307.field_1668, 71, class_11900.field_62556));
 
       ClientTickEvents.END_CLIENT_TICK.register((ClientTickEvents.EndTick)(client) -> {
          class_3675.class_306 bound = KeyBindingHelper.getBoundKeyOf(openGuiKey);
@@ -113,10 +119,25 @@ public class KafkaUtilsClient implements ClientModInitializer {
             AutoPot ap = (AutoPot)ModuleManager.get(AutoPot.class);
             if (ap != null && ap.isEnabled()) {
                client.method_1507(new PotionWheelScreen());
+            } else {
+               FastSwap fs = (FastSwap)ModuleManager.get(FastSwap.class);
+               if (fs != null && fs.isEnabled()) {
+                  client.method_1507(new FastSwapScreen());
+               }
             }
          }
 
          this.potWheelWasDown = wDown;
+         class_3675.class_306 pk = KeyBindingHelper.getBoundKeyOf(pearlKey);
+         boolean pDown = pk.method_1442() == class_307.field_1668 && pk.method_1444() != -1 && client.method_22683() != null && class_3675.method_15987(client.method_22683(), pk.method_1444());
+         if (pDown && !this.pearlKeyWasDown && client.field_1755 == null) {
+            QuickPearl qp = (QuickPearl)ModuleManager.get(QuickPearl.class);
+            if (qp != null && qp.isEnabled()) {
+               qp.throwPearl();
+            }
+         }
+
+         this.pearlKeyWasDown = pDown;
          if (client.field_1724 != null && client.field_1687 != null) {
             ModuleManager.onTick();
             if (BrewHelper.consumeOpen()) {
