@@ -8,6 +8,7 @@ import dev.kafka.kafkautils.gui.ClickGuiScreen;
 import dev.kafka.kafkautils.gui.EnchantHelperScreen;
 import dev.kafka.kafkautils.gui.MessengerScreen;
 import dev.kafka.kafkautils.gui.PotionBrowserScreen;
+import dev.kafka.kafkautils.gui.PotionWheelScreen;
 import dev.kafka.kafkautils.hud.HudManager;
 import dev.kafka.kafkautils.module.Module;
 import dev.kafka.kafkautils.module.ModuleManager;
@@ -22,6 +23,7 @@ import dev.kafka.kafkautils.module.modules.chat.FriendHighlight;
 import dev.kafka.kafkautils.module.modules.chat.FriendList;
 import dev.kafka.kafkautils.module.modules.chat.Messenger;
 import dev.kafka.kafkautils.module.modules.chat.PrivateMessages;
+import dev.kafka.kafkautils.module.modules.combat.AutoPot;
 import dev.kafka.kafkautils.module.modules.combat.BrewHelper;
 import dev.kafka.kafkautils.module.modules.combat.EnchantHelper;
 import dev.kafka.kafkautils.util.Render3D;
@@ -52,6 +54,10 @@ public class KafkaUtilsClient implements ClientModInitializer {
    private boolean hideKeyWasDown = false;
    private static class_304 shareCoordsKey;
    private boolean shareKeyWasDown = false;
+   private static class_304 throwPotKey;
+   private boolean throwKeyWasDown = false;
+   private static class_304 potWheelKey;
+   private boolean potWheelWasDown = false;
 
    public void onInitializeClient() {
       ModuleManager.init();
@@ -59,6 +65,8 @@ public class KafkaUtilsClient implements ClientModInitializer {
       openGuiKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.open_gui", class_307.field_1668, 88, class_11900.field_62556));
       hideHudKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.hide_hud", class_307.field_1668, 261, class_11900.field_62556));
       shareCoordsKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.share_coords", class_307.field_1668, -1, class_11900.field_62556));
+      throwPotKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.throw_potion", class_307.field_1668, 82, class_11900.field_62556));
+      potWheelKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.potion_wheel", class_307.field_1668, 86, class_11900.field_62556));
 
       ClientTickEvents.END_CLIENT_TICK.register((ClientTickEvents.EndTick)(client) -> {
          class_3675.class_306 bound = KeyBindingHelper.getBoundKeyOf(openGuiKey);
@@ -89,6 +97,26 @@ public class KafkaUtilsClient implements ClientModInitializer {
          }
 
          this.shareKeyWasDown = sDown;
+         class_3675.class_306 tk = KeyBindingHelper.getBoundKeyOf(throwPotKey);
+         boolean tDown = tk.method_1442() == class_307.field_1668 && tk.method_1444() != -1 && client.method_22683() != null && class_3675.method_15987(client.method_22683(), tk.method_1444());
+         if (tDown && !this.throwKeyWasDown && client.field_1755 == null) {
+            AutoPot ap = (AutoPot)ModuleManager.get(AutoPot.class);
+            if (ap != null && ap.isEnabled()) {
+               ap.throwConfigured();
+            }
+         }
+
+         this.throwKeyWasDown = tDown;
+         class_3675.class_306 wk = KeyBindingHelper.getBoundKeyOf(potWheelKey);
+         boolean wDown = wk.method_1442() == class_307.field_1668 && wk.method_1444() != -1 && client.method_22683() != null && class_3675.method_15987(client.method_22683(), wk.method_1444());
+         if (wDown && !this.potWheelWasDown && client.field_1755 == null) {
+            AutoPot ap = (AutoPot)ModuleManager.get(AutoPot.class);
+            if (ap != null && ap.isEnabled()) {
+               client.method_1507(new PotionWheelScreen());
+            }
+         }
+
+         this.potWheelWasDown = wDown;
          if (client.field_1724 != null && client.field_1687 != null) {
             ModuleManager.onTick();
             if (BrewHelper.consumeOpen()) {
