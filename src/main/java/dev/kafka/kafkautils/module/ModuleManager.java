@@ -35,6 +35,7 @@ import dev.kafka.kafkautils.module.modules.combat.KillDeathTracker;
 import dev.kafka.kafkautils.module.modules.combat.MaceAlert;
 import dev.kafka.kafkautils.module.modules.combat.SelfDurabilityAlert;
 import dev.kafka.kafkautils.module.modules.combat.PearlTracker;
+import dev.kafka.kafkautils.module.modules.combat.PotHeal;
 import dev.kafka.kafkautils.module.modules.combat.PvPLogger;
 import dev.kafka.kafkautils.module.modules.combat.SplashPredictor;
 import dev.kafka.kafkautils.module.modules.combat.TotemCounter;
@@ -80,6 +81,7 @@ public final class ModuleManager {
       register(new FastBreak());
       register(new FastEat());
       register(new AutoPot());
+      register(new PotHeal());
       register(new QuickPearl());
       register(new FastSwap());
       register(new AutoReplant());

@@ -2,6 +2,7 @@ package dev.kafka.kafkautils.module.modules.combat;
 
 import dev.kafka.kafkautils.module.Category;
 import dev.kafka.kafkautils.module.Module;
+import dev.kafka.kafkautils.setting.BooleanSetting;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -20,6 +21,8 @@ import net.minecraft.class_7923;
  * Auto Pot enabled that key throws potions instead.
  */
 public class FastSwap extends Module {
+   private final BooleanSetting pvpOnly = this.add(new BooleanSetting("PvP Only", true));
+
    public FastSwap() {
       super("Fast Swap", "Кольцо для быстрого перемещения предмета в активную руку (клавиша колеса зелий, когда Auto Pot выключен).", Category.COMBAT);
    }
@@ -37,6 +40,9 @@ public class FastSwap extends Module {
             continue;
          }
          String key = class_7923.field_41178.method_10221(s.method_7909()).method_12832();
+         if (this.pvpOnly.get() && !isPvp(key)) {
+            continue;
+         }
          Opt o = byType.get(key);
          if (o == null) {
             byType.put(key, new Opt(i, s, s.method_7964().getString(), s.method_7947()));
@@ -46,6 +52,26 @@ public class FastSwap extends Module {
       }
       out.addAll(byType.values());
       return out;
+   }
+
+   /** PvP-relevant items: potions (incl. custom), key foods and weapons. */
+   private static boolean isPvp(String id) {
+      switch (id) {
+         case "potion":
+         case "splash_potion":
+         case "lingering_potion":
+         case "carrot":
+         case "golden_carrot":
+         case "golden_apple":
+         case "enchanted_golden_apple":
+         case "mace":
+         case "trident":
+         case "bow":
+         case "crossbow":
+            return true;
+         default:
+            return id.endsWith("_sword") || id.endsWith("_axe"); // excludes pickaxe (_pickaxe)
+      }
    }
 
    /** Swaps the picked inventory item into the currently selected hotbar slot. */
