@@ -14,7 +14,7 @@ public class FastEat extends Module {
    private final NumberSetting speed = this.add(new NumberSetting("Speed", 3, 1, 20, 1));
 
    public FastEat() {
-      super("Fast Eat", "Ускоряет поедание еды и питьё зелий.", Category.COMBAT);
+      super("Fast Eat", "Ускоряет поедание еды и питьё зелий.", Category.FARMING);
    }
 
    public void onTick() {

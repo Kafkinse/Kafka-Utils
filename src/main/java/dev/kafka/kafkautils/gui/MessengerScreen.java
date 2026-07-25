@@ -43,10 +43,12 @@ public class MessengerScreen extends class_437 {
    private String note = "";
    private int scroll;
    private boolean showMembers;
+   private boolean showOnline;        // right panel shows everyone online on the relay
    private Messenger.Msg actionMsg;   // your own message clicked, awaiting edit/delete
    private String editingId;          // id being edited, or null
    private String editDraft = "";     // text to prefill when entering edit mode
-   private final List<Object[]> rowHits = new ArrayList<>(); // {int yTop, int yBottom, Msg}
+   private final List<Object[]> rowHits = new ArrayList<>();    // {int yTop, int yBottom, Msg}
+   private final List<Object[]> onlineHits = new ArrayList<>(); // {int yTop, int yBottom, String name}
 
    public MessengerScreen() {
       super(class_2561.method_43470("Мессенджер"));
@@ -70,8 +72,15 @@ public class MessengerScreen extends class_437 {
       this.searchField.method_47404(class_2561.method_43470("§7поиск по чатам…"));
       this.method_37063(this.searchField);
 
+      // Left: "who's online on the relay" toggle (cross-server presence).
+      int onlineCount = this.msg.onlineUsers().size();
+      this.method_37063(this.btn("§b● Онлайн (" + onlineCount + ")", 10, 55, LEFT_W - 6, 14, () -> {
+         this.showOnline = !this.showOnline;
+         this.method_41843();
+      }));
+
       // Left: thread tabs (with online dot for DMs).
-      int y = 56;
+      int y = 73;
       for (String key : this.msg.threadKeys()) {
          final String k = key;
          int un = this.msg.unreadOf(key);
@@ -84,6 +93,7 @@ public class MessengerScreen extends class_437 {
             this.actionMsg = null;
             this.editingId = null;
             this.showMembers = false;
+            this.showOnline = false;
             this.msg.openThread(k);
             this.method_41843();
          }));
@@ -180,9 +190,20 @@ public class MessengerScreen extends class_437 {
       return super.method_25401(mouseX, mouseY, horiz, vert);
    }
 
-   /** Click one of your own messages to bring up edit/delete. */
+   /** Click one of your own messages to bring up edit/delete, or an online name to DM. */
    public boolean method_25402(class_11909 click, boolean doubled) {
-      if (click.method_74245() == 0 && selected != null && (this.searchField == null || this.searchField.method_1882().isBlank())) {
+      if (click.method_74245() == 0 && this.showOnline) {
+         int my = (int) click.comp_4799();
+         if ((int) click.comp_4798() > LEFT_W + 8) {
+            for (Object[] hit : this.onlineHits) {
+               if (my >= (int) hit[0] && my < (int) hit[1]) {
+                  this.openDmWith((String) hit[2]);
+                  return true;
+               }
+            }
+         }
+      }
+      if (click.method_74245() == 0 && selected != null && !this.showOnline && (this.searchField == null || this.searchField.method_1882().isBlank())) {
          int mx = (int) click.comp_4798();
          int my = (int) click.comp_4799();
          if (mx > LEFT_W + 8) {
@@ -220,6 +241,20 @@ public class MessengerScreen extends class_437 {
       this.msg.openThread(selected);
       this.dmField.method_1852("");
       this.rebuildKeepingDraft();
+   }
+
+   private void openDmWith(String name) {
+      if (this.msg == null || name == null || name.isBlank()) {
+         return;
+      }
+      selected = "@" + name;
+      this.scroll = 0;
+      this.showOnline = false;
+      this.actionMsg = null;
+      this.editingId = null;
+      this.msg.messages(selected);
+      this.msg.openThread(selected);
+      this.method_41843();
    }
 
    private void doCreateGroup() {
@@ -321,8 +356,29 @@ public class MessengerScreen extends class_437 {
 
       super.method_25394(ctx, mouseX, mouseY, delta);
       this.rowHits.clear();
+      this.onlineHits.clear();
 
       if (this.msg == null) {
+         return;
+      }
+
+      // "Online on the relay" list — everyone connected, across any server.
+      if (this.showOnline) {
+         List<String> users = this.msg.onlineUsers();
+         ctx.method_51433(this.field_22793, "§d§lОнлайн на релее §7(" + users.size() + ")", LEFT_W + 16, 40, 0xFFD9C2FF, true);
+         ctx.method_51433(this.field_22793, "§8клик по нику — написать (работает между серверами)", LEFT_W + 16, 50, 0xFF6A6080, true);
+         int ry = 64;
+         for (String u : users) {
+            if (ry > h - 20) {
+               break;
+            }
+            ctx.method_51433(this.field_22793, "§a● §r" + u, LEFT_W + 16, ry, 0xFFE7DAF6, true);
+            this.onlineHits.add(new Object[]{ry - 1, ry + 9, u});
+            ry += 11;
+         }
+         if (users.isEmpty()) {
+            ctx.method_51433(this.field_22793, "§7сейчас никого (кроме тебя)", LEFT_W + 16, 64, 0xFF9A8FB0, true);
+         }
          return;
       }
 

@@ -387,6 +387,19 @@ public class Messenger extends Module {
       return false;
    }
 
+   /** Everyone currently connected to the relay (any server), except yourself. */
+   public List<String> onlineUsers() {
+      String me = this.myName();
+      List<String> out = new ArrayList<>();
+      for (String n : this.online) {
+         if (!n.equalsIgnoreCase(me)) {
+            out.add(n);
+         }
+      }
+      out.sort(String.CASE_INSENSITIVE_ORDER);
+      return out;
+   }
+
    public Set<String> knownGroups() {
       return this.groups;
    }
