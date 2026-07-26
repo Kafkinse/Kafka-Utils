@@ -24,8 +24,12 @@ import net.minecraft.class_1799;
  */
 public class AutoPot extends Module {
    private final StringSetting throwMatch = this.add(new StringSetting("Throw Potion", "weakness,слабост"));
+   // Harmful potions (thrown forward at enemies). Everything else counts as
+   // beneficial and is thrown at your feet. Keywords cover EN and RU item names;
+   // chosen to avoid false hits (e.g. "slowness" won't match "Slow Falling").
    private final StringSetting offensive = this.add(new StringSetting("Offensive Potions",
-      "weakness,poison,harming,damage,slowness,decay,wither,blind,слаб,яд,вред,урон,замедл,иссушен,тлен,слепот"));
+      "weakness,poison,harming,harm,slowness,infested,oozing,weaving,wind,decay,wither,blind,nausea,"
+      + "слаб,отравл,вред,урон,медлительн,замедл,заражени,склизк,ткачеств,ветров,иссушен,тлен,слепот,тошнот"));
 
    public AutoPot() {
       super("Auto Pot", "Бросок зелья по клавише (R) и кольцо метательных зелий (V).", Category.COMBAT);
