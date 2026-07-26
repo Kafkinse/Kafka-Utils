@@ -24,6 +24,8 @@ import net.minecraft.class_1799;
  */
 public class AutoPot extends Module {
    private final StringSetting throwMatch = this.add(new StringSetting("Throw Potion", "weakness,слабост"));
+   private final StringSetting offensive = this.add(new StringSetting("Offensive Potions",
+      "weakness,poison,harming,damage,slowness,decay,wither,blind,слаб,яд,вред,урон,замедл,иссушен,тлен,слепот"));
 
    public AutoPot() {
       super("Auto Pot", "Бросок зелья по клавише (R) и кольцо метательных зелий (V).", Category.COMBAT);
@@ -61,9 +63,14 @@ public class AutoPot extends Module {
       return out;
    }
 
-   /** Throws a picked wheel option in the look direction. */
+   /**
+    * Uses a picked wheel option: harmful potions (weakness, poison, …) are thrown
+    * forward at what you look at, while beneficial ones (speed and other buffs)
+    * are thrown at your feet so they land on you.
+    */
    public void use(Opt opt) {
-      PotionActions.useFromInventory(opt.index, false);
+      boolean harmful = PotionActions.matches(opt.stack, this.offensive.get());
+      PotionActions.useFromInventory(opt.index, !harmful);
    }
 
    /** A throwable potion option for the wheel: inventory index, icon stack, display name. */
