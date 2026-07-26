@@ -27,30 +27,39 @@ public class FastSwap extends Module {
       super("Fast Swap", "Кольцо для быстрого перемещения предмета в активную руку (клавиша колеса зелий, когда Auto Pot выключен).", Category.COMBAT);
    }
 
-   /** One distinct item type per slice, with the total count across the inventory. */
+   /**
+    * One slice per distinct item — keyed by display name, so potions are split by
+    * their effect (Speed vs Strength, not all "splash_potion" together). The item
+    * currently in your hand is skipped, since you can't swap onto what you hold.
+    */
    public List<Opt> listItems() {
       List<Opt> out = new ArrayList<>();
       if (mc.field_1724 == null) {
          return out;
       }
-      Map<String, Opt> byType = new LinkedHashMap<>();
+      int held = mc.field_1724.method_31548().method_67532();
+      Map<String, Opt> byName = new LinkedHashMap<>();
       for (int i = 0; i < 36; ++i) {
+         if (i == held) {
+            continue; // already in hand — nothing to swap onto
+         }
          class_1799 s = mc.field_1724.method_31548().method_5438(i);
          if (s.method_7960()) {
             continue;
          }
-         String key = class_7923.field_41178.method_10221(s.method_7909()).method_12832();
-         if (this.pvpOnly.get() && !isPvp(key)) {
+         String id = class_7923.field_41178.method_10221(s.method_7909()).method_12832();
+         if (this.pvpOnly.get() && !isPvp(id)) {
             continue;
          }
-         Opt o = byType.get(key);
+         String name = s.method_7964().getString();
+         Opt o = byName.get(name);
          if (o == null) {
-            byType.put(key, new Opt(i, s, s.method_7964().getString(), s.method_7947()));
+            byName.put(name, new Opt(i, s, name, s.method_7947()));
          } else {
             o.count += s.method_7947();
          }
       }
-      out.addAll(byType.values());
+      out.addAll(byName.values());
       return out;
    }
 
