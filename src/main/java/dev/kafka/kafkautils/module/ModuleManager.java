@@ -18,6 +18,7 @@ import dev.kafka.kafkautils.module.modules.chat.StaffNotify;
 import dev.kafka.kafkautils.module.modules.combat.ArmorAlert;
 import dev.kafka.kafkautils.module.modules.combat.AutoPot;
 import dev.kafka.kafkautils.module.modules.combat.AutoRaid;
+import dev.kafka.kafkautils.module.modules.combat.AutoShield;
 import dev.kafka.kafkautils.module.modules.combat.BrewHelper;
 import dev.kafka.kafkautils.module.modules.combat.DpsMeter;
 import dev.kafka.kafkautils.module.modules.combat.EnchantHelper;
@@ -84,6 +85,7 @@ public final class ModuleManager {
       register(new PotHeal());
       register(new QuickPearl());
       register(new FastSwap());
+      register(new AutoShield());
       register(new AutoReplant());
       register(new EnchantHelper());
       register(new BrewHelper());
