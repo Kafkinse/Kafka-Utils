@@ -450,7 +450,8 @@ public class MessengerScreen extends class_437 {
       if (this.scroll > blocks.size() - 1) {
          this.scroll = Math.max(0, blocks.size() - 1);
       }
-      int end = Math.max(1, blocks.size() - this.scroll);
+      // 0 when the thread has no messages yet (avoids indexing an empty heights[]).
+      int end = Math.max(0, blocks.size() - this.scroll);
       int start = end;
       int used = 0;
       while (start > 0 && used + heights[start - 1] <= bottom - top) {
