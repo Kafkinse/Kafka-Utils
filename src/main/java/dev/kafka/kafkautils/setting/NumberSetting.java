@@ -39,6 +39,10 @@ public class NumberSetting extends Setting {
       return this.max;
    }
 
+   public int step() {
+      return this.step;
+   }
+
    private int clamp(int v) {
       return Math.max(this.min, Math.min(this.max, v));
    }
