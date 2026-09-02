@@ -5,6 +5,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import dev.kafka.kafkautils.config.ConfigManager;
 import dev.kafka.kafkautils.gui.AutoTeleportScreen;
 import dev.kafka.kafkautils.gui.ClickGuiScreen;
+import dev.kafka.kafkautils.gui.EconomyScreen;
 import dev.kafka.kafkautils.gui.EnchantHelperScreen;
 import dev.kafka.kafkautils.gui.FastSwapScreen;
 import dev.kafka.kafkautils.gui.MessengerScreen;
@@ -19,6 +20,7 @@ import dev.kafka.kafkautils.module.modules.chat.AutoTeleport;
 import dev.kafka.kafkautils.module.modules.chat.ChatPing;
 import dev.kafka.kafkautils.module.modules.chat.ClickableChat;
 import dev.kafka.kafkautils.module.modules.chat.CoordinateShare;
+import dev.kafka.kafkautils.module.modules.chat.EconomyTracker;
 import dev.kafka.kafkautils.module.modules.chat.FriendChat;
 import dev.kafka.kafkautils.module.modules.chat.FriendHighlight;
 import dev.kafka.kafkautils.module.modules.chat.FriendList;
@@ -152,6 +154,9 @@ public class KafkaUtilsClient implements ClientModInitializer {
             if (Messenger.consumeOpen()) {
                client.method_1507(new MessengerScreen());
             }
+            if (EconomyTracker.consumeOpen()) {
+               client.method_1507(new EconomyScreen());
+            }
             HudManager.tickChatDrag();
          }
       });
@@ -192,6 +197,10 @@ public class KafkaUtilsClient implements ClientModInitializer {
          PrivateMessages pm = (PrivateMessages)ModuleManager.get(PrivateMessages.class);
          if (pm != null && pm.handleIncoming(message.getString())) {
             return false;
+         }
+         EconomyTracker eco = (EconomyTracker)ModuleManager.get(EconomyTracker.class);
+         if (eco != null && eco.isEnabled()) {
+            eco.handleMessage(message.getString());
          }
          AntiSpam as = (AntiSpam)ModuleManager.get(AntiSpam.class);
          return as == null || as.allow(message);
@@ -416,6 +425,26 @@ public class KafkaUtilsClient implements ClientModInitializer {
                   p.clearUnread();
                }
                c.getSource().sendFeedback(class_2561.method_43470("§d✉ §7Непрочитанные сброшены."));
+               return 1;
+            })))
+            .then(ClientCommandManager.literal("money").executes(c -> {
+               EconomyTracker e = (EconomyTracker)ModuleManager.get(EconomyTracker.class);
+               if (e != null && !e.isEnabled()) {
+                  e.setEnabled(true);
+               }
+               EconomyTracker.requestOpen();
+               return 1;
+            }).then(ClientCommandManager.literal("today").executes(c -> {
+               EconomyTracker e = (EconomyTracker)ModuleManager.get(EconomyTracker.class);
+               if (e != null) {
+                  e.printSummary();
+               }
+               return 1;
+            })).then(ClientCommandManager.literal("reset").executes(c -> {
+               EconomyTracker e = (EconomyTracker)ModuleManager.get(EconomyTracker.class);
+               if (e != null) {
+                  e.reset();
+               }
                return 1;
             }))));
       });
