@@ -133,15 +133,28 @@ public class EconomyScreen extends class_437 {
          ctx.method_51433(this.field_22793, "§7Пока нет операций. Поторгуй/переведи — появятся.", 12, top, 0xFF9A8FB0, true);
          return;
       }
+      // Columns: time | amount (right-aligned) | type | note.
+      int cTime = 12;
+      int cAmtRight = 150;
+      int cType = 158;
+      int cNote = 252;
       int y = top;
       for (int i = this.scroll; i < show.size() && y < bottom; ++i) {
          EconomyTracker.Txn t = show.get(i);
          String when = TIME.format(Instant.ofEpochMilli(t.ts).atZone(ZoneId.systemDefault()));
          String amt = (t.income() ? "§a+" : "§c-") + EconomyTracker.fmt(t.amount) + " " + cur;
-         String desc = "§7" + EconomyTracker.label(t.kind)
-            + (t.note.isEmpty() ? "" : " §f" + t.note)
-            + (t.who.isEmpty() ? "" : " §8(" + t.who + ")");
-         ctx.method_51433(this.field_22793, "§8" + when + "  " + amt + "  " + desc, 12, y, 0xFFE7DAF6, true);
+         String note;
+         if (t.kind == EconomyTracker.Kind.TRANSFER_OUT) {
+            note = "§8→ §7" + t.who;
+         } else if (t.kind == EconomyTracker.Kind.TRANSFER_IN) {
+            note = "§8← §7" + t.who;
+         } else {
+            note = (t.note.isEmpty() ? "" : "§r" + t.note) + (t.who.isEmpty() ? "" : " §8(" + t.who + ")");
+         }
+         ctx.method_51433(this.field_22793, "§8" + when, cTime, y, 0xFFE7DAF6, true);
+         ctx.method_51433(this.field_22793, amt, cAmtRight - this.field_22793.method_1727(amt), y, 0xFFFFFFFF, true);
+         ctx.method_51433(this.field_22793, "§7" + EconomyTracker.label(t.kind), cType, y, 0xFFE7DAF6, true);
+         ctx.method_51433(this.field_22793, note, cNote, y, 0xFFE7DAF6, true);
          y += 10;
       }
       if (this.scroll < maxScroll || this.scroll > 0) {
