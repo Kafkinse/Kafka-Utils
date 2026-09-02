@@ -32,12 +32,15 @@ public class EconomyTracker extends Module {
    private static final int LOAD_LIMIT = 5000;
    private static boolean openRequested;
 
-   // Amount groups allow digits, spaces and commas (thousands separators).
-   private static final Pattern P_BALANCE = Pattern.compile("(?:осталось|баланс)\\s*[:»]?\\s*([\\d.,\\s]+?)\\s*◎", Pattern.CASE_INSENSITIVE);
-   private static final Pattern P_OUT = Pattern.compile("^\\s*([\\d.,\\s]+?)\\s*◎?\\s*отправлено\\s+игроку\\s+([^\\s]+?)\\.?\\s*$", Pattern.CASE_INSENSITIVE);
-   private static final Pattern P_BUY = Pattern.compile("вы\\s+купили\\s+(.+?)\\s+за\\s+([\\d.,\\s]+?)\\s*◎", Pattern.CASE_INSENSITIVE);
+   // Amount groups allow digits, spaces and commas (thousands separators). The
+   // currency glyph (◎ / a server's custom-font icon) is NOT required — servers
+   // often render it from a resource pack as a private-use codepoint that would
+   // never match a literal ◎, so amounts are read up to the first non-number.
+   private static final Pattern P_BALANCE = Pattern.compile("(?:осталось|баланс)\\s*[:»]?\\s*(\\d[\\d.,\\s]*)", Pattern.CASE_INSENSITIVE);
+   private static final Pattern P_OUT = Pattern.compile("^\\s*(\\d[\\d.,\\s]*?)\\s+отправлено\\s+игроку\\s+([^\\s]+?)[.!]?\\s*$", Pattern.CASE_INSENSITIVE);
+   private static final Pattern P_BUY = Pattern.compile("вы\\s+купили\\s+(.+?)\\s+за\\s+(\\d[\\d.,\\s]*)", Pattern.CASE_INSENSITIVE);
    private static final Pattern P_SELLER = Pattern.compile("у\\s+\\[([^\\]]+)\\]");
-   private static final Pattern P_SALE = Pattern.compile("вы\\s+продали\\s+(.+?)\\s+за\\s+([\\d.,\\s]+?)\\s*◎", Pattern.CASE_INSENSITIVE);
+   private static final Pattern P_SALE = Pattern.compile("вы\\s+продали\\s+(.+?)\\s+за\\s+(\\d[\\d.,\\s]*)", Pattern.CASE_INSENSITIVE);
    // Incoming transfer — format unconfirmed; two common phrasings, refined later.
    private static final Pattern P_IN = Pattern.compile("(?:игрок\\s+([^\\s]+)\\s+отправил\\s+вам\\s+([\\d.,\\s]+)|([\\d.,\\s]+?)\\s*◎?\\s*получено\\s+от\\s+игрока\\s+([^\\s]+))", Pattern.CASE_INSENSITIVE);
 
