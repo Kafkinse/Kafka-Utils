@@ -2,9 +2,9 @@
   "providers": [
     {
       "type": "ttf",
-      "file": "kafkautils:font/rubik_medium.ttf",
+      "file": "kafkautils:rubik_medium.ttf",
       "shift": [0.0, 0.0],
-      "size": 8.5,
+      "size": 9.0,
       "oversample": 4.0
     }
   ]

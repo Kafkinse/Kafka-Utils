@@ -5,6 +5,7 @@ import java.util.Optional;
 import net.minecraft.class_2561;
 import net.minecraft.class_2583;
 import net.minecraft.class_2960;
+import net.minecraft.class_310;
 import net.minecraft.class_327;
 import net.minecraft.class_332;
 
@@ -33,7 +34,37 @@ public final class KFont {
       }
       initialised = true;
       regular = build("kafkautils", "ui");
+      if (!usable(regular)) {
+         regular = null;
+      }
       medium = build("kafkautils", "ui_medium");
+      if (!usable(medium)) {
+         medium = null;
+      }
+   }
+
+   /**
+    * Confirms the font actually renders glyphs. If the bundled TTF failed to
+    * load, every character resolves to the fixed-width "missing glyph" box, so a
+    * wide string and a thin string measure the same width — in that case we drop
+    * the custom font entirely and fall back to the vanilla renderer (readable
+    * text, never a wall of boxes).
+    */
+   private static boolean usable(class_2583 st) {
+      if (st == null) {
+         return false;
+      }
+      try {
+         class_327 tr = class_310.method_1551().field_1772;
+         if (tr == null) {
+            return false;
+         }
+         int wide = tr.method_27525(class_2561.method_43470("WWWWWWWW").method_10862(st));
+         int thin = tr.method_27525(class_2561.method_43470("iiiiiiii").method_10862(st));
+         return wide - thin >= 6;
+      } catch (Throwable t) {
+         return false;
+      }
    }
 
    private static class_2583 build(String namespace, String path) {
