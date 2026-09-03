@@ -13,9 +13,12 @@ import dev.kafka.kafkautils.setting.ModeSetting;
 import dev.kafka.kafkautils.setting.NumberSetting;
 import dev.kafka.kafkautils.setting.Setting;
 import dev.kafka.kafkautils.setting.StringSetting;
+import dev.kafka.kafkautils.util.KFont;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import net.minecraft.class_11908;
 import net.minecraft.class_11909;
 import net.minecraft.class_2561;
@@ -28,8 +31,9 @@ import org.lwjgl.glfw.GLFW;
 /**
  * Modern dark ClickGUI: a category sidebar, a greeting header with search, and
  * scrollable two-column module cards with custom switches, sliders and dropdown
- * values. Text values are edited in a small centred modal (the only text
- * widgets); everything else is drawn and hit-tested directly.
+ * values. Text is drawn with the bundled Rubik font ({@link KFont}); cards can
+ * be collapsed to their header so long categories don't require much scrolling.
+ * Text values are edited in a small centred modal.
  */
 public class ClickGuiScreen extends class_437 {
    // Palette (ARGB).
@@ -39,6 +43,7 @@ public class ClickGuiScreen extends class_437 {
    private static final int CARD = 0xFF191922;
    private static final int CARD_HDR = 0xFF20202B;
    private static final int BORDER = 0xFF2A2A37;
+   private static final int BORDER_SOFT = 0x33FFFFFF;
    private static final int ACCENT = 0xFF8B5CF6;
    private static final int ACCENT2 = 0xFFA78BFA;
    private static final int TEXT = 0xFFE7E5EE;
@@ -50,6 +55,7 @@ public class ClickGuiScreen extends class_437 {
 
    private static int selectedCategory = 0;
    private static int scroll = 0;
+   private static final Set<String> collapsed = new HashSet<>();
 
    private final List<Object[]> hits = new ArrayList<>(); // {x,y,w,h,type,ref,ref2}
    private int winX, winY, winW, winH, sbW, contentX, contentTop, contentBottom, colW, colGap;
@@ -62,6 +68,10 @@ public class ClickGuiScreen extends class_437 {
    private ListSetting editList;
    private int editListIdx = -1;
    private class_342 editor;
+
+   private NumberSetting draggingNum;
+   private int dragTrackX;
+   private int dragTrackW;
 
    public ClickGuiScreen() {
       super(class_2561.method_43470("Kafka Utils"));
@@ -79,8 +89,8 @@ public class ClickGuiScreen extends class_437 {
       // Search field (top-right of the header) — hidden while the modal is open.
       if (!editing) {
          String prev = this.search != null ? this.search.method_1882() : "";
-         int shW = 150;
-         this.search = new class_342(this.field_22793, contentX + colW * 2 + colGap - shW, winY + 20, shW, 16, class_2561.method_43470("поиск"));
+         int shW = 132;
+         this.search = new class_342(this.field_22793, contentX + colW * 2 + colGap - shW, winY + 20, shW, 15, class_2561.method_43470("поиск"));
          this.search.method_1858(false);
          this.search.method_1868(TEXT);
          this.search.method_47404(class_2561.method_43470("§7поиск модуля…"));
@@ -103,13 +113,14 @@ public class ClickGuiScreen extends class_437 {
    private void geom() {
       int w = this.field_22789;
       int h = this.field_22790;
-      winX = 22;
-      winY = 18;
-      winW = w - 44;
-      winH = h - 36;
-      sbW = 152;
+      // Compact, centred window — not almost full-screen.
+      winW = Math.min(724, w - 40);
+      winH = Math.min(452, h - 40);
+      winX = (w - winW) / 2;
+      winY = (h - winH) / 2;
+      sbW = 150;
       contentX = winX + sbW + 12;
-      contentTop = winY + 58;
+      contentTop = winY + 56;
       contentBottom = winY + winH - 12;
       int avail = winX + winW - 12 - contentX;
       colGap = 12;
@@ -125,8 +136,9 @@ public class ClickGuiScreen extends class_437 {
       int h = this.field_22790;
 
       ctx.method_25294(0, 0, w, h, SCRIM);
-      fillRound(ctx, winX, winY, winW, winH, 8, WIN);
-      fillRound(ctx, winX, winY, sbW, winH, 8, SB);
+      this.drawShadow(ctx);
+      fillRound(ctx, winX, winY, winW, winH, 9, WIN);
+      fillRound(ctx, winX, winY, sbW, winH, 9, SB);
 
       this.drawSidebar(ctx, mouseX, mouseY);
       this.drawHeader(ctx);
@@ -144,26 +156,34 @@ public class ClickGuiScreen extends class_437 {
       super.method_25394(ctx, mouseX, mouseY, delta); // search field or editor field
    }
 
+   private void drawShadow(class_332 ctx) {
+      for (int i = 6; i >= 1; --i) {
+         int a = 0x0A * i;
+         fillRound(ctx, winX - i, winY - i + 3, winW + i * 2, winH + i * 2, 12, (a << 24));
+      }
+   }
+
    private void drawSidebar(class_332 ctx, int mouseX, int mouseY) {
-      ctx.method_51433(this.field_22793, "§f§lKafka §r§7Utils", winX + 16, winY + 18, TEXT, false);
-      ctx.method_25294(winX + 14, winY + 34, winX + sbW - 14, winY + 35, BORDER);
+      KFont.draw(ctx, this.field_22793, "Kafka", winX + 16, winY + 17, TEXT, false, true);
+      int kw = KFont.width(this.field_22793, "Kafka", true);
+      KFont.draw(ctx, this.field_22793, "Utils", winX + 16 + kw + 4, winY + 17, MUTED, false, false);
+      ctx.method_25294(winX + 14, winY + 33, winX + sbW - 14, winY + 34, BORDER);
 
       Category[] cats = Category.values();
-      int y = winY + 46;
+      int y = winY + 44;
       for (int i = 0; i < cats.length; ++i) {
          boolean sel = i == selectedCategory;
          int itemH = 30;
          if (sel) {
-            fillRound(ctx, winX + 10, y, sbW - 20, itemH, 5, CARD_HDR);
-            ctx.method_25294(winX + 10, y + 6, winX + 12, y + itemH - 6, ACCENT);
+            fillRound(ctx, winX + 10, y, sbW - 20, itemH, 6, CARD_HDR);
+            fillRound(ctx, winX + 10, y + 7, 3, itemH - 14, 1, ACCENT);
          }
-         // icon square
          fillRound(ctx, winX + 18, y + 7, 16, 16, 4, sel ? ACCENT : OFF);
          String initial = cats[i].getTitle().substring(0, 1).toUpperCase(Locale.ROOT);
-         ctx.method_51433(this.field_22793, initial, winX + 23, y + 11, sel ? 0xFFFFFFFF : MUTED, false);
-         ctx.method_51433(this.field_22793, (sel ? "§f" : "§r") + cats[i].getTitle(), winX + 42, y + 7, sel ? TEXT : MUTED, false);
+         KFont.draw(ctx, this.field_22793, initial, winX + 23, y + 11, sel ? 0xFFFFFFFF : MUTED, false, true);
+         KFont.draw(ctx, this.field_22793, cats[i].getTitle(), winX + 42, y + 7, sel ? TEXT : MUTED, false, sel);
          int count = ModuleManager.getByCategory(cats[i]).size();
-         ctx.method_51433(this.field_22793, "§8" + count + " модулей", winX + 42, y + 17, FAINT, false);
+         KFont.draw(ctx, this.field_22793, count + " модулей", winX + 42, y + 18, FAINT, false, false);
          this.hits.add(new Object[]{winX + 10, y, sbW - 20, itemH, "cat", i, null});
          y += itemH + 4;
       }
@@ -172,24 +192,24 @@ public class ClickGuiScreen extends class_437 {
       int by = winY + winH - 40;
       ctx.method_25294(winX + 14, by - 8, winX + sbW - 14, by - 7, BORDER);
       String name = this.playerName();
-      fillRound(ctx, winX + 16, by, 20, 20, 5, ACCENT);
-      ctx.method_51433(this.field_22793, name.isEmpty() ? "?" : name.substring(0, 1).toUpperCase(Locale.ROOT), winX + 23, by + 6, 0xFFFFFFFF, false);
-      ctx.method_51433(this.field_22793, "§f" + name, winX + 42, by + 3, TEXT, false);
-      ctx.method_25294(winX + 42, by + 15, winX + 46, by + 19, GREEN);
-      ctx.method_51433(this.field_22793, "§7в сети", winX + 50, by + 12, MUTED, false);
+      fillRound(ctx, winX + 16, by, 20, 20, 6, ACCENT);
+      KFont.draw(ctx, this.field_22793, name.isEmpty() ? "?" : name.substring(0, 1).toUpperCase(Locale.ROOT), winX + 23, by + 6, 0xFFFFFFFF, false, true);
+      KFont.draw(ctx, this.field_22793, name, winX + 42, by + 2, TEXT, false, true);
+      fillRound(ctx, winX + 42, by + 14, 5, 5, 2, GREEN);
+      KFont.draw(ctx, this.field_22793, "в сети", winX + 50, by + 12, MUTED, false, false);
    }
 
    private void drawHeader(class_332 ctx) {
       String name = this.playerName();
-      ctx.method_51433(this.field_22793, "§f§lПривет, " + name, contentX, winY + 16, TEXT, false);
-      ctx.method_51433(this.field_22793, "§7С возвращением", contentX, winY + 28, MUTED, false);
-      int shW = 150;
+      KFont.draw(ctx, this.field_22793, "Привет, " + name, contentX, winY + 15, TEXT, false, true);
+      KFont.draw(ctx, this.field_22793, "С возвращением", contentX, winY + 28, MUTED, false, false);
+      int shW = 132;
       int sx = contentX + colW * 2 + colGap - shW;
-      fillRound(ctx, sx - 6, winY + 16, shW + 6, 22, 5, CARD);
-      int hb = sx - 6 - 92;
-      fillRound(ctx, hb, winY + 16, 86, 22, 5, CARD);
-      ctx.method_51433(this.field_22793, "§7HUD Editor", hb + 14, winY + 22, MUTED, false);
-      this.hits.add(new Object[]{hb, winY + 16, 86, 22, "hud", null, null});
+      fillRound(ctx, sx - 6, winY + 16, shW + 6, 21, 6, CARD);
+      int hb = sx - 6 - 84;
+      fillRound(ctx, hb, winY + 16, 78, 21, 6, CARD);
+      KFont.draw(ctx, this.field_22793, "HUD Editor", hb + 13, winY + 22, MUTED, false, false);
+      this.hits.add(new Object[]{hb, winY + 16, 78, 21, "hud", null, null});
    }
 
    private void drawCards(class_332 ctx, int mouseX, int mouseY) {
@@ -222,8 +242,15 @@ public class ClickGuiScreen extends class_437 {
       }
    }
 
+   private boolean isCollapsed(Module m) {
+      return collapsed.contains(m.getName());
+   }
+
    private int cardHeight(Module m) {
-      return 24 + m.getSettings().size() * 20 + 8;
+      if (this.isCollapsed(m)) {
+         return 26;
+      }
+      return 26 + m.getSettings().size() * 20 + 8;
    }
 
    /** Modules that are really sub-menus: their card shows "Открыть", not a toggle. */
@@ -235,27 +262,48 @@ public class ClickGuiScreen extends class_437 {
       if (y + h < contentTop || y > contentBottom) {
          return; // fully outside the viewport
       }
+      boolean col = this.isCollapsed(m);
+      // Card body + header with a soft 1px border.
+      fillRound(ctx, x - 1, y - 1, w + 2, h + 2, 7, BORDER);
       fillRound(ctx, x, y, w, h, 6, CARD);
-      fillRound(ctx, x, y, w, 24, 6, CARD_HDR);
-      ctx.method_25294(x + 10, y + 24, x + w - 10, y + 25, BORDER);
-      ctx.method_51433(this.field_22793, "§f" + m.getName(), x + 12, y + 8, TEXT, false);
-      if (isLauncher(m)) {
-         // Modules that are really sub-menus (Messenger, Brew/Enchant Helper):
-         // an "Открыть" pill that launches their screen instead of a toggle.
-         int pw = this.field_22793.method_1727("Открыть") + 14;
-         fillRound(ctx, x + w - pw - 8, y + 5, pw, 15, 4, ACCENT);
-         ctx.method_51433(this.field_22793, "§fОткрыть", x + w - pw - 8 + 7, y + 9, 0xFFFFFFFF, false);
-         if (y + 5 >= contentTop && y <= contentBottom) {
-            this.hits.add(new Object[]{x + w - pw - 8, y + 4, pw, 17, "open", m, null});
-         }
-      } else {
-         this.drawSwitch(ctx, x + w - 30, y + 7, m.isEnabled());
-         if (y + 4 >= contentTop && y <= contentBottom) {
-            this.hits.add(new Object[]{x + w - 32, y + 4, 28, 18, "modtoggle", m, null});
-         }
+      fillRound(ctx, x, y, w, col ? h : 26, 6, CARD_HDR);
+      if (!col) {
+         ctx.method_25294(x + 10, y + 25, x + w - 10, y + 26, BORDER);
       }
 
-      int ry = y + 30;
+      // Collapse chevron + title.
+      int cvx = x + 13;
+      int cvcy = y + 13;
+      if (col) {
+         caretRight(ctx, cvx - 1, cvcy, 3, MUTED);
+      } else {
+         caretDown(ctx, cvx, cvcy - 1, 3, MUTED);
+      }
+      KFont.draw(ctx, this.field_22793, m.getName(), x + 24, y + 9, TEXT, false, true);
+
+      if (isLauncher(m)) {
+         int pw = KFont.width(this.field_22793, "Открыть", false) + 16;
+         fillRound(ctx, x + w - pw - 8, y + 5, pw, 16, 5, ACCENT);
+         KFont.draw(ctx, this.field_22793, "Открыть", x + w - pw - 8 + 8, y + 9, 0xFFFFFFFF, false, false);
+         if (y + 5 >= contentTop && y <= contentBottom) {
+            this.hits.add(new Object[]{x + w - pw - 8, y + 4, pw, 18, "open", m, null});
+         }
+      } else {
+         this.drawSwitch(ctx, x + w - 30, y + 8, m.isEnabled());
+         if (y + 5 >= contentTop && y <= contentBottom) {
+            this.hits.add(new Object[]{x + w - 32, y + 5, 28, 18, "modtoggle", m, null});
+         }
+      }
+      // Header click (outside the button) toggles collapse — added last so the
+      // toggle / open button, recorded above, win on overlap.
+      if (y + 4 >= contentTop && y <= contentBottom) {
+         this.hits.add(new Object[]{x, y, w, 26, "collapse", m, null});
+      }
+
+      if (col) {
+         return;
+      }
+      int ry = y + 32;
       for (Setting s : m.getSettings()) {
          this.drawSetting(ctx, s, x + 12, ry, w - 24);
          ry += 20;
@@ -266,7 +314,7 @@ public class ClickGuiScreen extends class_437 {
       if (y + 14 < contentTop || y > contentBottom) {
          return; // outside the scrolled viewport — don't draw or hit-test
       }
-      ctx.method_51433(this.field_22793, "§7" + s.getName(), x, y + 4, MUTED, false);
+      KFont.draw(ctx, this.field_22793, s.getName(), x, y + 4, MUTED, false, false);
       int right = x + w;
       if (s instanceof BooleanSetting bs) {
          this.drawSwitch(ctx, right - 22, y + 2, bs.get());
@@ -274,8 +322,8 @@ public class ClickGuiScreen extends class_437 {
       } else if (s instanceof NumberSetting ns) {
          int val = ns.get();
          String vs = Integer.toString(val);
-         int vw = this.field_22793.method_1727(vs);
-         ctx.method_51433(this.field_22793, "§f" + vs, right - vw, y + 4, TEXT, false);
+         int vw = KFont.width(this.field_22793, vs, false);
+         KFont.draw(ctx, this.field_22793, vs, right - vw, y + 4, TEXT, false, false);
          int trackX = x + w / 2 - 6;
          int trackW = right - vw - 8 - trackX;
          if (trackW < 20) {
@@ -294,25 +342,27 @@ public class ClickGuiScreen extends class_437 {
          this.hits.add(new Object[]{trackX - 3, y, trackW + 12, 16, "num", ns, new int[]{trackX, trackW}});
       } else if (s instanceof ModeSetting ms) {
          String vs = ms.get();
-         int vw = this.field_22793.method_1727(vs) + 12;
+         int vw = KFont.width(this.field_22793, vs, false) + 18;
          fillRound(ctx, right - vw, y + 1, vw, 14, 4, CARD_HDR);
-         ctx.method_51433(this.field_22793, "§f" + vs + " §7▾", right - vw + 5, y + 4, TEXT, false);
+         KFont.draw(ctx, this.field_22793, vs, right - vw + 6, y + 4, TEXT, false, false);
+         caretDown(ctx, right - 8, y + 6, 3, MUTED);
          this.hits.add(new Object[]{right - vw, y, vw, 16, "mode", ms, null});
       } else if (s instanceof ListSetting ls) {
-         ctx.method_51433(this.field_22793, "§8" + ls.values().size() + " зап. §7[ред.]", right - this.field_22793.method_1727(ls.values().size() + " зап. [ред.]") - 4, y + 4, MUTED, false);
+         String txt = ls.values().size() + " зап. [ред.]";
+         KFont.draw(ctx, this.field_22793, txt, right - KFont.width(this.field_22793, txt, false), y + 4, MUTED, false, false);
          this.hits.add(new Object[]{x, y, w, 16, "listopen", ls, null});
       } else if (s instanceof StringSetting ss) {
          String v = ss.get();
          String show = v.length() > 22 ? v.substring(0, 21) + "…" : v;
          if (show.isEmpty()) {
-            show = "§8—";
+            show = "—";
          }
-         int vw = this.field_22793.method_1727(show.replace("§8", "")) + 12;
-         if (vw > w - 60) {
-            vw = w - 60;
+         int vw = KFont.width(this.field_22793, show, false) + 14;
+         if (vw > w - 56) {
+            vw = w - 56;
          }
          fillRound(ctx, right - vw, y + 1, vw, 14, 4, CARD_HDR);
-         ctx.method_51433(this.field_22793, "§f" + show, right - vw + 5, y + 4, TEXT, false);
+         KFont.draw(ctx, this.field_22793, show, right - vw + 6, y + 4, v.isEmpty() ? FAINT : TEXT, false, false);
          this.hits.add(new Object[]{right - vw, y, vw, 16, "str", ss, null});
       }
    }
@@ -328,25 +378,26 @@ public class ClickGuiScreen extends class_437 {
       int cy = this.field_22790 / 2;
       int ew = 260;
       ctx.method_25294(0, 0, this.field_22789, this.field_22790, 0x99000000);
+      fillRound(ctx, cx - ew / 2 - 13, cy - 45, ew + 26, 94, 9, BORDER);
       fillRound(ctx, cx - ew / 2 - 12, cy - 44, ew + 24, 92, 8, CARD);
       fillRound(ctx, cx - ew / 2 - 12, cy - 44, ew + 24, 22, 8, CARD_HDR);
       String title = this.editList != null
          ? (this.editListIdx < 0 ? "Новая запись" : "Изменить запись")
          : "Изменить: " + (this.editStr != null ? this.editStr.getName() : "");
-      ctx.method_51433(this.field_22793, "§f" + title, cx - ew / 2 - 4, cy - 37, TEXT, false);
+      KFont.draw(ctx, this.field_22793, title, cx - ew / 2 - 4, cy - 37, TEXT, false, true);
       fillRound(ctx, cx - ew / 2 - 6, cy - 10, ew + 12, 24, 5, WIN);
 
       int by = cy + 22;
       fillRound(ctx, cx - ew / 2 - 12 + 12, by, 90, 18, 5, ACCENT);
-      ctx.method_51433(this.field_22793, "§fСохранить", cx - ew / 2 + 22, by + 5, 0xFFFFFFFF, false);
+      KFont.draw(ctx, this.field_22793, "Сохранить", cx - ew / 2 + 22, by + 5, 0xFFFFFFFF, false, false);
       this.hits.add(new Object[]{cx - ew / 2, by, 90, 18, "editorSave", null, null});
       fillRound(ctx, cx + ew / 2 - 90 + 12, by, 90, 18, 5, OFF);
-      ctx.method_51433(this.field_22793, "§7Отмена", cx + ew / 2 - 48, by + 5, MUTED, false);
+      KFont.draw(ctx, this.field_22793, "Отмена", cx + ew / 2 - 48, by + 5, MUTED, false, false);
       this.hits.add(new Object[]{cx + ew / 2 - 78, by, 90, 18, "editorCancel", null, null});
 
       if (this.editList != null && this.editListIdx >= 0) {
          fillRound(ctx, cx + ew / 2 - 90 + 12, by - 24, 90, 16, 5, 0xFF3A2030);
-         ctx.method_51433(this.field_22793, "§cУдалить запись", cx + ew / 2 - 68, by - 20, 0xFFFF8080, false);
+         KFont.draw(ctx, this.field_22793, "Удалить запись", cx + ew / 2 - 68, by - 20, 0xFFFF8080, false, false);
          this.hits.add(new Object[]{cx + ew / 2 - 78, by - 24, 90, 16, "editorDelete", null, null});
       }
    }
@@ -402,6 +453,13 @@ public class ClickGuiScreen extends class_437 {
                   ConfigManager.save();
                }
                Messenger.requestOpen();
+            }
+            return true;
+         }
+         case "collapse" -> {
+            String n = ((Module) hb[5]).getName();
+            if (!collapsed.remove(n)) {
+               collapsed.add(n);
             }
             return true;
          }
@@ -461,10 +519,6 @@ public class ClickGuiScreen extends class_437 {
          }
       }
    }
-
-   private NumberSetting draggingNum;
-   private int dragTrackX;
-   private int dragTrackW;
 
    public boolean method_25403(class_11909 click, double dx, double dy) {
       if (this.draggingNum != null) {
@@ -564,7 +618,23 @@ public class ClickGuiScreen extends class_437 {
       return m.field_1724 != null ? m.field_1724.method_7334().name() : "Player";
    }
 
-   // --- rounded rect ------------------------------------------------------
+   // --- primitives --------------------------------------------------------
+
+   /** Small downward caret (▾) centred horizontally on cx, top at cy. */
+   private static void caretDown(class_332 ctx, int cx, int cy, int s, int color) {
+      for (int i = 0; i < s; ++i) {
+         int hw = s - i;
+         ctx.method_25294(cx - hw, cy + i, cx + hw, cy + i + 1, color);
+      }
+   }
+
+   /** Small rightward caret (▸) centred vertically on cy, left at cx. */
+   private static void caretRight(class_332 ctx, int cx, int cy, int s, int color) {
+      for (int i = 0; i < s; ++i) {
+         int hh = s - i;
+         ctx.method_25294(cx + i, cy - hh, cx + i + 1, cy + hh, color);
+      }
+   }
 
    private static void fillRound(class_332 ctx, int x, int y, int w, int h, int r, int color) {
       if (w <= 0 || h <= 0) {
