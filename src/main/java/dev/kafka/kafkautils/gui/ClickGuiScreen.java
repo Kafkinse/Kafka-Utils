@@ -4,6 +4,9 @@ import dev.kafka.kafkautils.config.ConfigManager;
 import dev.kafka.kafkautils.module.Category;
 import dev.kafka.kafkautils.module.Module;
 import dev.kafka.kafkautils.module.ModuleManager;
+import dev.kafka.kafkautils.module.modules.chat.Messenger;
+import dev.kafka.kafkautils.module.modules.combat.BrewHelper;
+import dev.kafka.kafkautils.module.modules.combat.EnchantHelper;
 import dev.kafka.kafkautils.setting.BooleanSetting;
 import dev.kafka.kafkautils.setting.ListSetting;
 import dev.kafka.kafkautils.setting.ModeSetting;
@@ -223,6 +226,11 @@ public class ClickGuiScreen extends class_437 {
       return 24 + m.getSettings().size() * 20 + 8;
    }
 
+   /** Modules that are really sub-menus: their card shows "Открыть", not a toggle. */
+   private static boolean isLauncher(Module m) {
+      return m instanceof BrewHelper || m instanceof EnchantHelper || m instanceof Messenger;
+   }
+
    private void drawCard(class_332 ctx, Module m, int x, int y, int w, int h) {
       if (y + h < contentTop || y > contentBottom) {
          return; // fully outside the viewport
@@ -231,9 +239,20 @@ public class ClickGuiScreen extends class_437 {
       fillRound(ctx, x, y, w, 24, 6, CARD_HDR);
       ctx.method_25294(x + 10, y + 24, x + w - 10, y + 25, BORDER);
       ctx.method_51433(this.field_22793, "§f" + m.getName(), x + 12, y + 8, TEXT, false);
-      this.drawSwitch(ctx, x + w - 30, y + 7, m.isEnabled());
-      if (y + 4 >= contentTop && y <= contentBottom) {
-         this.hits.add(new Object[]{x + w - 32, y + 4, 28, 18, "modtoggle", m, null});
+      if (isLauncher(m)) {
+         // Modules that are really sub-menus (Messenger, Brew/Enchant Helper):
+         // an "Открыть" pill that launches their screen instead of a toggle.
+         int pw = this.field_22793.method_1727("Открыть") + 14;
+         fillRound(ctx, x + w - pw - 8, y + 5, pw, 15, 4, ACCENT);
+         ctx.method_51433(this.field_22793, "§fОткрыть", x + w - pw - 8 + 7, y + 9, 0xFFFFFFFF, false);
+         if (y + 5 >= contentTop && y <= contentBottom) {
+            this.hits.add(new Object[]{x + w - pw - 8, y + 4, pw, 17, "open", m, null});
+         }
+      } else {
+         this.drawSwitch(ctx, x + w - 30, y + 7, m.isEnabled());
+         if (y + 4 >= contentTop && y <= contentBottom) {
+            this.hits.add(new Object[]{x + w - 32, y + 4, 28, 18, "modtoggle", m, null});
+         }
       }
 
       int ry = y + 30;
@@ -369,6 +388,21 @@ public class ClickGuiScreen extends class_437 {
          case "modtoggle" -> {
             ((Module) hb[5]).toggle();
             ConfigManager.save();
+            return true;
+         }
+         case "open" -> {
+            Module m = (Module) hb[5];
+            if (m instanceof BrewHelper) {
+               BrewHelper.requestOpen();
+            } else if (m instanceof EnchantHelper) {
+               EnchantHelper.requestOpen();
+            } else if (m instanceof Messenger) {
+               if (!m.isEnabled()) {
+                  m.setEnabled(true);
+                  ConfigManager.save();
+               }
+               Messenger.requestOpen();
+            }
             return true;
          }
          case "hud" -> {
