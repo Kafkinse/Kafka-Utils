@@ -34,8 +34,11 @@ dependencies {
     // 26.2 ships without the obfuscation layer that needs a separate mappings
     // artifact, so there is no `mappings` dependency and no remap step (this
     // mirrors CNDL_chat+'s mc26_2 target, which builds the same way).
-    modImplementation "net.fabricmc:fabric-loader:${rootProject.loader_version_26_2}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${rootProject.fabric_version_26_2}"
+    // With remap disabled, Loom doesn't register mod-aware configurations
+    // (modImplementation etc.) at all — there is nothing to remap, so these
+    // are plain Gradle `implementation` dependencies, same as CNDL_chat+'s.
+    implementation "net.fabricmc:fabric-loader:${rootProject.loader_version_26_2}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${rootProject.fabric_version_26_2}"
 }
 
 sourceSets {
