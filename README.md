@@ -85,8 +85,10 @@ combat-помощники, ESP/render-модули и инструменты д�
 
 ## Сборка
 
-Требуется **JDK 21** и доступ в интернет для первой сборки (Gradle/Loom скачают
-Minecraft, Fabric и зависимости).
+Мод собирается для двух версий Minecraft — **1.21.11** и **26.2** — из общего
+кода. Требуется **JDK 25** (одной новой JDK достаточно для обеих версий) и
+доступ в интернет для первой сборки (Gradle/Loom скачают Minecraft, Fabric и
+зависимости).
 
 ```bash
 git clone https://github.com/Kafkinse/Kafka-Utils.git
@@ -96,29 +98,41 @@ git checkout claude/minecraft-fabric-1-21-11-4f9bn3
 ./gradlew build
 ```
 
-Готовый мод появится в `build/libs/`:
+Готовые моды появятся в `build/release/`:
 
 ```
-build/libs/kafkautils-1.2.0.jar          ← этот файл кладём в mods/
-build/libs/kafkautils-1.2.0-sources.jar
+build/release/kafkautils-1.2.0-mc1.21.11.jar   ← для Minecraft 1.21.11
+build/release/kafkautils-1.2.0-mc26.2.jar      ← для Minecraft 26.2
 ```
 
-Скопируйте `kafkautils-1.2.0.jar` в папку `mods/` вместе с
-[Fabric API](https://modrinth.com/mod/fabric-api).
+Скопируйте нужный (или оба) файл в папку `mods/` вместе с
+[Fabric API](https://modrinth.com/mod/fabric-api) своей версии.
+
+Собрать/протестировать только одну версию:
+
+```bash
+./gradlew :mc1_21_11:build
+./gradlew :mc26_2:build
+```
 
 ### Запуск в dev-окружении
 
 ```bash
-./gradlew runClient
+./gradlew :mc1_21_11:runClient
+./gradlew :mc26_2:runClient
 ```
 
 ---
 
 ## Примечания
 
-- Исходники написаны в **intermediary**-именах (`class_310`, `method_1551` …),
-  поэтому сборка идёт против intermediary-маппингов, а не yarn — это уже
-  настроено в `build.gradle`.
+- Исходники под 1.21.11 (`src/targets/mc1_21_11/java`) написаны в
+  **intermediary**-именах (`class_310`, `method_1551` …), поэтому сборка идёт
+  против intermediary-маппингов, а не yarn — это уже настроено в
+  `mc1_21_11/build.gradle`.
+- Исходники под 26.2 (`src/targets/mc26_2/java`) и общий код
+  (`src/client/java`) написаны в обычных Mojang-именах — 26.2 ставляется без
+  отдельного слоя обфускации, поэтому для этого таргета маппинги не нужны.
 - Низкоуровневый рендер боксов/линий вынесен в `util/Render3D.java`. Если после
   очередного обновления Minecraft какой-то intermediary-вызов там перестанет
   резолвиться, править нужно только этот файл — публичный API (`drawBox`,

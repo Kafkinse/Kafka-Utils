@@ -10,3 +10,4 @@ pluginManagement {
 }
 
 rootProject.name = 'kafkautils'
+include 'mc1_21_11', 'mc26_2'

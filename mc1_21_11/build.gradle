@@ -1,0 +1,97 @@
+// Minecraft 1.21.11 target. This is the pre-multitarget build unchanged in
+// every behavioural respect — only the source directories moved (they now
+// live under ../src/client/java (shared with mc26_2, currently empty) and
+// ../src/targets/mc1_21_11/java (everything that existed before)).
+plugins {
+    id 'fabric-loom' version '1.14-SNAPSHOT'
+    id 'maven-publish'
+}
+
+version = rootProject.mod_version
+group = rootProject.maven_group
+
+base {
+    archivesName = rootProject.archives_base_name
+}
+
+loom {
+    // Client-only mod; every source (shared + 1.21.11-specific) compiles into
+    // the single default "main" sourceSet, unsplit, exactly as before.
+    mods {
+        "kafkautils" {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven { url "https://maven.fabricmc.net/" }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${rootProject.minecraft_version_1_21_11}"
+    // The sources are written against intermediary names (class_310, method_1551, ...),
+    // so build against intermediary mappings rather than yarn.
+    mappings "net.fabricmc:intermediary:${rootProject.minecraft_version_1_21_11}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${rootProject.loader_version_1_21_11}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${rootProject.fabric_version_1_21_11}"
+}
+
+sourceSets {
+    main {
+        java.srcDirs = [
+            rootProject.file('src/client/java'),
+            rootProject.file('src/targets/mc1_21_11/java')
+        ]
+        resources.srcDirs = [
+            rootProject.file('src/client/resources'),
+            rootProject.file('src/targets/mc1_21_11/resources')
+        ]
+    }
+}
+
+processResources {
+    inputs.property "version", project.version
+    inputs.property "minecraft_version", rootProject.minecraft_version_1_21_11
+    inputs.property "loader_version", rootProject.loader_version_1_21_11
+    filteringCharset "UTF-8"
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version,
+                "minecraft_version": rootProject.minecraft_version_1_21_11,
+                "loader_version": rootProject.loader_version_1_21_11
+    }
+}
+
+def targetJavaVersion = 21
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = targetJavaVersion
+    it.options.encoding = "UTF-8"
+}
+
+java {
+    withSourcesJar()
+
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+tasks.named('remapJar') {
+    archiveFileName = "${rootProject.archives_base_name}-${rootProject.mod_version}-mc1.21.11.jar"
+}
+
+jar {
+    from("${rootProject.projectDir}/LICENSE_kafkautils") {
+        rename { "${it}_${project.base.archivesName.get()}" }
+    }
+}
+
+publishing {
+    publications {
+        create("mavenJava", MavenPublication) {
+            artifactId = "${rootProject.archives_base_name}-mc1_21_11"
+            from components.java
+        }
+    }
+}
