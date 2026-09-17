@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.kafka.kafkautils.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "ClientBossBarHudAccessor",
+    "ClientPlayNetworkHandlerMixin",
+    "ClientPlayerInteractionManagerAccessor",
+    "LivingEntityAccessor",
+    "MinecraftClientAccessor",
+    "PlayerListHudMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

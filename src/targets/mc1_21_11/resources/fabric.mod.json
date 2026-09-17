@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "kafkautils",
+  "version": "${version}",
+  "name": "Kafka Utils",
+  "description": "Client-side utility mod: combat, render and chat modules with a ClickGUI and movable HUD.",
+  "authors": [
+    "Kafka"
+  ],
+  "contact": {
+    "homepage": "https://github.com/Kafkinse/Kafka-Utils",
+    "sources": "https://github.com/Kafkinse/Kafka-Utils",
+    "issues": "https://github.com/Kafkinse/Kafka-Utils/issues"
+  },
+  "license": "ARR",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "dev.kafka.kafkautils.KafkaUtilsClient"
+    ]
+  },
+  "mixins": [
+    {
+      "config": "kafkautils.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}

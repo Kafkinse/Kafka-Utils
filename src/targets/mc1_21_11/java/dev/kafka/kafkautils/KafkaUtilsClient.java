@@ -1,0 +1,569 @@
+package dev.kafka.kafkautils;
+
+import com.mojang.brigadier.LiteralMessage;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.context.CommandContext;
+import dev.kafka.kafkautils.chatplus.ChatAlertHud;
+import dev.kafka.kafkautils.chatplus.ChatAlertHudRegistration;
+import dev.kafka.kafkautils.chatplus.ChatPlusBootstrap;
+import dev.kafka.kafkautils.chatplus.ChatPlusScreen;
+import dev.kafka.kafkautils.config.ConfigManager;
+import dev.kafka.kafkautils.gui.AutoTeleportScreen;
+import dev.kafka.kafkautils.gui.ClickGuiScreen;
+import dev.kafka.kafkautils.gui.EconomyScreen;
+import dev.kafka.kafkautils.gui.EnchantHelperScreen;
+import dev.kafka.kafkautils.gui.FastSwapScreen;
+import dev.kafka.kafkautils.gui.MessengerScreen;
+import dev.kafka.kafkautils.gui.PotionBrowserScreen;
+import dev.kafka.kafkautils.gui.PotionWheelScreen;
+import dev.kafka.kafkautils.hud.HudManager;
+import dev.kafka.kafkautils.module.Module;
+import dev.kafka.kafkautils.module.ModuleManager;
+import dev.kafka.kafkautils.module.WorldRenderModule;
+import dev.kafka.kafkautils.module.modules.chat.AntiSpam;
+import dev.kafka.kafkautils.module.modules.chat.AutoTeleport;
+import dev.kafka.kafkautils.module.modules.chat.ChatPing;
+import dev.kafka.kafkautils.module.modules.chat.ClickableChat;
+import dev.kafka.kafkautils.module.modules.chat.CoordinateShare;
+import dev.kafka.kafkautils.module.modules.chat.EconomyTracker;
+import dev.kafka.kafkautils.module.modules.chat.FriendChat;
+import dev.kafka.kafkautils.module.modules.chat.FriendHighlight;
+import dev.kafka.kafkautils.module.modules.chat.FriendList;
+import dev.kafka.kafkautils.module.modules.chat.Messenger;
+import dev.kafka.kafkautils.module.modules.chat.PrivateMessages;
+import dev.kafka.kafkautils.module.modules.combat.AutoPot;
+import dev.kafka.kafkautils.module.modules.combat.BrewHelper;
+import dev.kafka.kafkautils.module.modules.combat.EnchantHelper;
+import dev.kafka.kafkautils.module.modules.combat.FastSwap;
+import dev.kafka.kafkautils.module.modules.combat.QuickPearl;
+import dev.kafka.kafkautils.util.ChatUtil;
+import dev.kafka.kafkautils.util.Render3D;
+import dev.kafka.kafkautils.util.ServerCommands;
+import dev.kafka.kafkautils.util.UpdateChecker;
+import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
+import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
+import net.minecraft.class_2561;
+import net.minecraft.class_304;
+import net.minecraft.class_310;
+import net.minecraft.class_3414;
+import net.minecraft.class_3417;
+import net.minecraft.class_3675;
+import net.minecraft.class_437;
+import net.minecraft.class_304.class_11900;
+import net.minecraft.class_3675.class_307;
+
+public class KafkaUtilsClient implements ClientModInitializer {
+   public static final String MOD_ID = "kafkautils";
+   private static class_304 openGuiKey;
+   private boolean openKeyWasDown = false;
+   private static class_304 hideHudKey;
+   private boolean hideKeyWasDown = false;
+   private static class_304 shareCoordsKey;
+   private boolean shareKeyWasDown = false;
+   private static class_304 throwPotKey;
+   private boolean throwKeyWasDown = false;
+   private static class_304 potWheelKey;
+   private boolean potWheelWasDown = false;
+   private static class_304 pearlKey;
+   private boolean pearlKeyWasDown = false;
+   private static class_304 chatPlusKey;
+   private boolean chatPlusKeyWasDown = false;
+
+   public void onInitializeClient() {
+      ModuleManager.init();
+      ConfigManager.load();
+      openGuiKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.open_gui", class_307.field_1668, 88, class_11900.field_62556));
+      hideHudKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.hide_hud", class_307.field_1668, 261, class_11900.field_62556));
+      shareCoordsKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.share_coords", class_307.field_1668, -1, class_11900.field_62556));
+      throwPotKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.throw_potion", class_307.field_1668, 82, class_11900.field_62556));
+      potWheelKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.potion_wheel", class_307.field_1668, 86, class_11900.field_62556));
+      pearlKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.quick_pearl", class_307.field_1668, 71, class_11900.field_62556));
+      chatPlusKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.chat_plus", class_307.field_1668, 297, class_11900.field_62556));
+      ChatPlusBootstrap.init(() -> class_310.method_1551().method_1548().method_1676());
+      ChatAlertHudRegistration.register();
+      UpdateChecker.start();
+
+      ClientTickEvents.END_CLIENT_TICK.register((ClientTickEvents.EndTick)(client) -> {
+         class_3675.class_306 bound = KeyBindingHelper.getBoundKeyOf(openGuiKey);
+         boolean down = bound.method_1442() == class_307.field_1668 && bound.method_1444() != -1 && client.method_22683() != null && class_3675.method_15987(client.method_22683(), bound.method_1444());
+         if (down && !this.openKeyWasDown) {
+            if (client.field_1755 == null) {
+               client.method_1507(new ClickGuiScreen());
+            } else if (client.field_1755 instanceof ClickGuiScreen) {
+               client.method_1507((class_437)null);
+            }
+         }
+
+         this.openKeyWasDown = down;
+         class_3675.class_306 hk = KeyBindingHelper.getBoundKeyOf(hideHudKey);
+         boolean hDown = hk.method_1442() == class_307.field_1668 && hk.method_1444() != -1 && client.method_22683() != null && class_3675.method_15987(client.method_22683(), hk.method_1444());
+         if (hDown && !this.hideKeyWasDown && client.field_1755 == null) {
+            HudManager.toggleHidden();
+         }
+
+         this.hideKeyWasDown = hDown;
+         class_3675.class_306 sk = KeyBindingHelper.getBoundKeyOf(shareCoordsKey);
+         boolean sDown = sk.method_1442() == class_307.field_1668 && sk.method_1444() != -1 && client.method_22683() != null && class_3675.method_15987(client.method_22683(), sk.method_1444());
+         if (sDown && !this.shareKeyWasDown && client.field_1755 == null) {
+            CoordinateShare cs = (CoordinateShare)ModuleManager.get(CoordinateShare.class);
+            if (cs != null && cs.isEnabled()) {
+               cs.share();
+            }
+         }
+
+         this.shareKeyWasDown = sDown;
+         class_3675.class_306 tk = KeyBindingHelper.getBoundKeyOf(throwPotKey);
+         boolean tDown = tk.method_1442() == class_307.field_1668 && tk.method_1444() != -1 && client.method_22683() != null && class_3675.method_15987(client.method_22683(), tk.method_1444());
+         if (tDown && !this.throwKeyWasDown && client.field_1755 == null) {
+            AutoPot ap = (AutoPot)ModuleManager.get(AutoPot.class);
+            if (ap != null && ap.isEnabled()) {
+               ap.throwConfigured();
+            }
+         }
+
+         this.throwKeyWasDown = tDown;
+         class_3675.class_306 wk = KeyBindingHelper.getBoundKeyOf(potWheelKey);
+         boolean wDown = wk.method_1442() == class_307.field_1668 && wk.method_1444() != -1 && client.method_22683() != null && class_3675.method_15987(client.method_22683(), wk.method_1444());
+         if (wDown && !this.potWheelWasDown && client.field_1755 == null) {
+            AutoPot ap = (AutoPot)ModuleManager.get(AutoPot.class);
+            if (ap != null && ap.isEnabled()) {
+               client.method_1507(new PotionWheelScreen());
+            } else {
+               FastSwap fs = (FastSwap)ModuleManager.get(FastSwap.class);
+               if (fs != null && fs.isEnabled()) {
+                  client.method_1507(new FastSwapScreen());
+               }
+            }
+         }
+
+         this.potWheelWasDown = wDown;
+         class_3675.class_306 pk = KeyBindingHelper.getBoundKeyOf(pearlKey);
+         boolean pDown = pk.method_1442() == class_307.field_1668 && pk.method_1444() != -1 && client.method_22683() != null && class_3675.method_15987(client.method_22683(), pk.method_1444());
+         if (pDown && !this.pearlKeyWasDown && client.field_1755 == null) {
+            QuickPearl qp = (QuickPearl)ModuleManager.get(QuickPearl.class);
+            if (qp != null && qp.isEnabled()) {
+               qp.throwPearl();
+            }
+         }
+
+         this.pearlKeyWasDown = pDown;
+         class_3675.class_306 cpk = KeyBindingHelper.getBoundKeyOf(chatPlusKey);
+         boolean cpDown = cpk.method_1442() == class_307.field_1668 && cpk.method_1444() != -1 && client.method_22683() != null && class_3675.method_15987(client.method_22683(), cpk.method_1444());
+         if (cpDown && !this.chatPlusKeyWasDown && client.field_1755 == null) {
+            client.method_1507(new ChatPlusScreen());
+         }
+
+         this.chatPlusKeyWasDown = cpDown;
+         if (client.field_1724 != null && client.field_1687 != null) {
+            ModuleManager.onTick();
+            ChatAlertHud.tick();
+            int chatAlertSounds = ChatAlertHud.drainPendingSounds();
+            for (int i = 0; i < chatAlertSounds; ++i) {
+               client.field_1724.method_5783((class_3414) class_3417.field_14622.comp_349(), 0.7F, 1.6F);
+            }
+            UpdateChecker.consumeAvailable().ifPresent(ChatUtil::raw);
+            if (BrewHelper.consumeOpen()) {
+               client.method_1507(new PotionBrowserScreen());
+            }
+            if (EnchantHelper.consumeOpen()) {
+               client.method_1507(new EnchantHelperScreen());
+            }
+            if (AutoTeleport.consumeOpen()) {
+               client.method_1507(new AutoTeleportScreen());
+            }
+            if (Messenger.consumeOpen()) {
+               client.method_1507(new MessengerScreen());
+            }
+            if (EconomyTracker.consumeOpen()) {
+               client.method_1507(new EconomyScreen());
+            }
+            HudManager.tickChatDrag();
+         }
+      });
+
+      WorldRenderEvents.BEFORE_DEBUG_RENDER.register((WorldRenderEvents.DebugRender)(context) -> {
+         class_310 client = class_310.method_1551();
+         if (client.field_1687 != null && client.field_1724 != null) {
+            Render3D.begin(context);
+            try {
+               for(Module m : ModuleManager.getModules()) {
+                  if (m.isEnabled() && m instanceof WorldRenderModule wrm) {
+                     try {
+                        wrm.onWorldRender(context);
+                     } catch (Throwable t) {
+                        m.setEnabled(false);
+                        System.err.println("[KafkaUtils] Disabled '" + m.getName() + "' after a render error: " + String.valueOf(t));
+                     }
+                  }
+               }
+            } finally {
+               Render3D.end();
+            }
+         }
+      });
+
+      HudRenderCallback.EVENT.register((HudRenderCallback)(context, tickCounter) -> HudManager.render(context));
+
+      // Incoming: hide friend-chat whispers and show them nicely; then AntiSpam.
+      ClientReceiveMessageEvents.ALLOW_GAME.register((ClientReceiveMessageEvents.AllowGame)(message, overlay) -> {
+         FriendChat fc = (FriendChat)ModuleManager.get(FriendChat.class);
+         if (fc != null && fc.handleIncoming(message.getString())) {
+            return false;
+         }
+         AutoTeleport tp = (AutoTeleport)ModuleManager.get(AutoTeleport.class);
+         if (tp != null) {
+            tp.handleMessage(message.getString());
+         }
+         PrivateMessages pm = (PrivateMessages)ModuleManager.get(PrivateMessages.class);
+         if (pm != null && pm.handleIncoming(message.getString())) {
+            return false;
+         }
+         EconomyTracker eco = (EconomyTracker)ModuleManager.get(EconomyTracker.class);
+         if (eco != null && eco.isEnabled()) {
+            eco.handleMessage(message.getString());
+         }
+         AntiSpam as = (AntiSpam)ModuleManager.get(AntiSpam.class);
+         return as == null || as.allow(message);
+      });
+
+      ClientReceiveMessageEvents.MODIFY_GAME.register((ClientReceiveMessageEvents.ModifyGame)(message, overlay) -> {
+         if (overlay) {
+            return message;
+         }
+         class_2561 result = message;
+         ChatPing ping = (ChatPing)ModuleManager.get(ChatPing.class);
+         if (ping != null) {
+            result = ping.process(result);
+         }
+         FriendHighlight fh = (FriendHighlight)ModuleManager.get(FriendHighlight.class);
+         if (fh != null) {
+            result = fh.process(result);
+         }
+         ClickableChat cc = (ClickableChat)ModuleManager.get(ClickableChat.class);
+         if (cc != null) {
+            result = cc.process(result);
+         }
+         return result;
+      });
+
+      // Outgoing: intercept "// message" (as chat and as command) for Friend Chat.
+      ClientSendMessageEvents.ALLOW_CHAT.register((message) -> {
+         FriendChat fc = (FriendChat)ModuleManager.get(FriendChat.class);
+         return fc == null || !fc.handleChat(message);
+      });
+      ClientSendMessageEvents.ALLOW_COMMAND.register((command) -> {
+         FriendChat fc = (FriendChat)ModuleManager.get(FriendChat.class);
+         if (fc != null && fc.handleCommand(command)) {
+            return false;
+         }
+         PrivateMessages pm = (PrivateMessages)ModuleManager.get(PrivateMessages.class);
+         if (pm != null) {
+            pm.onCommand(command); // marks that whisper thread as read
+         }
+         return true;
+      });
+
+      // Client command: /kafka team add|remove|list , /kafka enchant
+      ClientCommandRegistrationCallback.EVENT.register((dispatcher, access) -> {
+         dispatcher.register(ClientCommandManager.literal("kafka").then(ClientCommandManager.literal("team")
+            .then(ClientCommandManager.literal("add").then(ClientCommandManager.argument("name", StringArgumentType.word()).executes(c -> {
+               String name = StringArgumentType.getString(c, "name");
+               FriendList fl = (FriendList)ModuleManager.get(FriendList.class);
+               boolean ok = fl != null && fl.addFriend(name);
+               c.getSource().sendFeedback(class_2561.method_43470(ok ? "§aДруг добавлен: §r" + name : "§7Уже в друзьях или ошибка"));
+               return 1;
+            })))
+            .then(ClientCommandManager.literal("remove").then(ClientCommandManager.argument("name", StringArgumentType.word()).executes(c -> {
+               String name = StringArgumentType.getString(c, "name");
+               FriendList fl = (FriendList)ModuleManager.get(FriendList.class);
+               boolean ok = fl != null && fl.removeFriend(name);
+               c.getSource().sendFeedback(class_2561.method_43470(ok ? "§cДруг удалён: §r" + name : "§7Не найден"));
+               return 1;
+            })))
+            .then(ClientCommandManager.literal("list").executes(c -> {
+               FriendList fl = (FriendList)ModuleManager.get(FriendList.class);
+               String list = fl == null || fl.friends().isEmpty() ? "§7пусто" : "§r" + String.join(", ", fl.friends());
+               c.getSource().sendFeedback(class_2561.method_43470("§dДрузья: " + list));
+               return 1;
+            })))
+            .then(ClientCommandManager.literal("enchant").executes(c -> {
+               EnchantHelper.requestOpen();
+               return 1;
+            }).then(ClientCommandManager.argument("preset", StringArgumentType.word()).suggests((ctx, b) -> {
+               EnchantHelper eh = (EnchantHelper)ModuleManager.get(EnchantHelper.class);
+               if (eh != null) {
+                  for (String k : eh.presetKeys()) {
+                     b.suggest(k, new LiteralMessage(eh.presetTooltip(k)));
+                  }
+               }
+               return b.buildFuture();
+            }).executes(c -> {
+               EnchantHelper eh = (EnchantHelper)ModuleManager.get(EnchantHelper.class);
+               if (eh != null) {
+                  eh.printPreset(StringArgumentType.getString(c, "preset"));
+               }
+               return 1;
+            })))
+            .then(ClientCommandManager.literal("brew").executes(c -> {
+               BrewHelper.requestOpen();
+               return 1;
+            }).then(ClientCommandManager.argument("potion", StringArgumentType.word()).suggests((ctx, b) -> {
+               BrewHelper bh = (BrewHelper)ModuleManager.get(BrewHelper.class);
+               if (bh != null) {
+                  for (String k : bh.brewKeys()) {
+                     b.suggest(k, new LiteralMessage(bh.brewTooltip(k)));
+                  }
+               }
+               return b.buildFuture();
+            }).executes(c -> {
+               BrewHelper bh = (BrewHelper)ModuleManager.get(BrewHelper.class);
+               if (bh != null) {
+                  bh.printBrew(StringArgumentType.getString(c, "potion"), "");
+               }
+               return 1;
+            }).then(ClientCommandManager.argument("options", StringArgumentType.greedyString()).suggests((ctx, b) -> {
+               for (String s : new String[]{"splash", "lingering", "long", "strong", "splash long", "splash strong", "lingering strong"}) {
+                  b.suggest(s);
+               }
+               return b.buildFuture();
+            }).executes(c -> {
+               BrewHelper bh = (BrewHelper)ModuleManager.get(BrewHelper.class);
+               if (bh != null) {
+                  bh.printBrew(StringArgumentType.getString(c, "potion"), StringArgumentType.getString(c, "options"));
+               }
+               return 1;
+            }))))
+            .then(ClientCommandManager.literal("tpa").executes(c -> {
+               AutoTeleport.requestOpen();
+               return 1;
+            }).then(ClientCommandManager.literal("add").then(ClientCommandManager.argument("name", StringArgumentType.word()).suggests((ctx, b) -> {
+               AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class);
+               if (t != null) {
+                  for (String p : t.onlinePlayers()) {
+                     b.suggest(p);
+                  }
+               }
+               return b.buildFuture();
+            }).executes(c -> {
+               String name = StringArgumentType.getString(c, "name");
+               AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class);
+               boolean ok = t != null && t.add(name);
+               c.getSource().sendFeedback(class_2561.method_43470(ok ? "§aРазрешён телепорт от: §r" + name : "§7Уже в списке или ошибка"));
+               return 1;
+            })))
+            .then(ClientCommandManager.literal("remove").then(ClientCommandManager.argument("name", StringArgumentType.word()).suggests((ctx, b) -> {
+               AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class);
+               if (t != null) {
+                  for (String p : t.allowedList()) {
+                     b.suggest(p);
+                  }
+               }
+               return b.buildFuture();
+            }).executes(c -> {
+               String name = StringArgumentType.getString(c, "name");
+               AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class);
+               boolean ok = t != null && t.remove(name);
+               c.getSource().sendFeedback(class_2561.method_43470(ok ? "§cУбран: §r" + name : "§7Не найден"));
+               return 1;
+            })))
+            .then(ClientCommandManager.literal("list").executes(c -> {
+               AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class);
+               String list = t == null || t.allowedList().isEmpty() ? "§7пусто" : "§r" + String.join(", ", t.allowedList());
+               c.getSource().sendFeedback(class_2561.method_43470("§dРазрешённые (TPA): " + list));
+               return 1;
+            })))
+            .then(ClientCommandManager.literal("group")
+            .then(ClientCommandManager.literal("create").then(ClientCommandManager.argument("name", StringArgumentType.word()).executes(c -> {
+               Messenger m = (Messenger)ModuleManager.get(Messenger.class);
+               if (m != null) {
+                  if (!m.isEnabled()) {
+                     m.setEnabled(true);
+                  }
+                  m.createGroup(StringArgumentType.getString(c, "name"));
+               }
+               return 1;
+            })))
+            .then(ClientCommandManager.literal("add").then(ClientCommandManager.argument("nick", StringArgumentType.word()).suggests((ctx, b) -> {
+               AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class);
+               if (t != null) {
+                  for (String p : t.onlinePlayers()) {
+                     b.suggest(p);
+                  }
+               }
+               return b.buildFuture();
+            }).then(ClientCommandManager.argument("group", StringArgumentType.word()).suggests((ctx, b) -> {
+               Messenger m = (Messenger)ModuleManager.get(Messenger.class);
+               if (m != null) {
+                  for (String g : m.knownGroups()) {
+                     b.suggest(g);
+                  }
+               }
+               return b.buildFuture();
+            }).executes(c -> {
+               Messenger m = (Messenger)ModuleManager.get(Messenger.class);
+               if (m != null) {
+                  if (!m.isEnabled()) {
+                     m.setEnabled(true);
+                  }
+                  m.addToGroup(StringArgumentType.getString(c, "nick"), StringArgumentType.getString(c, "group"));
+               }
+               return 1;
+            })))))
+            .then(ClientCommandManager.literal("pm").executes(c -> {
+               Messenger m = (Messenger)ModuleManager.get(Messenger.class);
+               if (m != null && !m.isEnabled()) {
+                  m.setEnabled(true);
+               }
+               Messenger.requestOpen();
+               return 1;
+            })
+            .then(ClientCommandManager.literal("search").then(ClientCommandManager.argument("query", StringArgumentType.greedyString()).executes(c -> {
+               PrivateMessages p = (PrivateMessages)ModuleManager.get(PrivateMessages.class);
+               if (p != null) {
+                  p.printSearch(StringArgumentType.getString(c, "query"));
+               }
+               return 1;
+            })))
+            .then(ClientCommandManager.literal("history").then(ClientCommandManager.argument("name", StringArgumentType.word()).suggests((ctx, b) -> {
+               AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class);
+               if (t != null) {
+                  for (String p : t.onlinePlayers()) {
+                     b.suggest(p);
+                  }
+               }
+               return b.buildFuture();
+            }).executes(c -> {
+               PrivateMessages p = (PrivateMessages)ModuleManager.get(PrivateMessages.class);
+               if (p != null) {
+                  p.printHistory(StringArgumentType.getString(c, "name"));
+               }
+               return 1;
+            })))
+            .then(ClientCommandManager.literal("read").executes(c -> {
+               PrivateMessages p = (PrivateMessages)ModuleManager.get(PrivateMessages.class);
+               if (p != null) {
+                  p.clearUnread();
+               }
+               c.getSource().sendFeedback(class_2561.method_43470("§d✉ §7Непрочитанные сброшены."));
+               return 1;
+            })))
+            .then(ClientCommandManager.literal("money").executes(c -> {
+               EconomyTracker e = (EconomyTracker)ModuleManager.get(EconomyTracker.class);
+               if (e != null && !e.isEnabled()) {
+                  e.setEnabled(true);
+               }
+               EconomyTracker.requestOpen();
+               return 1;
+            }).then(ClientCommandManager.literal("today").executes(c -> {
+               EconomyTracker e = (EconomyTracker)ModuleManager.get(EconomyTracker.class);
+               if (e != null) {
+                  e.printSummary();
+               }
+               return 1;
+            })).then(ClientCommandManager.literal("reset").executes(c -> {
+               EconomyTracker e = (EconomyTracker)ModuleManager.get(EconomyTracker.class);
+               if (e != null) {
+                  e.reset();
+               }
+               return 1;
+            })))
+            .then(ClientCommandManager.literal("pay")
+               .then(ClientCommandManager.argument("player", StringArgumentType.word()).suggests((ctx, b) -> { AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class); if (t != null) { for (String p : t.onlinePlayers()) { b.suggest(p); } } return b.buildFuture(); })
+               .then(ClientCommandManager.argument("amount", StringArgumentType.word()).executes(c -> {
+                  serverCommandFeedback(c, ServerCommands.send("pay", StringArgumentType.getString(c, "player"),
+                     StringArgumentType.getString(c, "amount"), null));
+                  return 1;
+               }))))
+            .then(ClientCommandManager.literal("msg")
+               .then(ClientCommandManager.argument("player", StringArgumentType.word()).suggests((ctx, b) -> { AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class); if (t != null) { for (String p : t.onlinePlayers()) { b.suggest(p); } } return b.buildFuture(); })
+               .then(ClientCommandManager.argument("message", StringArgumentType.greedyString()).executes(c -> {
+                  serverCommandFeedback(c, ServerCommands.send("msg", StringArgumentType.getString(c, "player"),
+                     null, StringArgumentType.getString(c, "message")));
+                  return 1;
+               }))))
+            .then(ClientCommandManager.literal("mail")
+               .then(ClientCommandManager.argument("player", StringArgumentType.word()).suggests((ctx, b) -> { AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class); if (t != null) { for (String p : t.onlinePlayers()) { b.suggest(p); } } return b.buildFuture(); })
+               .then(ClientCommandManager.argument("message", StringArgumentType.greedyString()).executes(c -> {
+                  serverCommandFeedback(c, ServerCommands.send("mail", StringArgumentType.getString(c, "player"),
+                     null, StringArgumentType.getString(c, "message")));
+                  return 1;
+               }))))
+            .then(ClientCommandManager.literal("call")
+               .then(ClientCommandManager.argument("player", StringArgumentType.word()).suggests((ctx, b) -> { AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class); if (t != null) { for (String p : t.onlinePlayers()) { b.suggest(p); } } return b.buildFuture(); }).executes(c -> {
+                  serverCommandFeedback(c, ServerCommands.send("call", StringArgumentType.getString(c, "player"), null, null));
+                  return 1;
+               })))
+            .then(ClientCommandManager.literal("ignore")
+               .then(ClientCommandManager.argument("player", StringArgumentType.word()).suggests((ctx, b) -> { AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class); if (t != null) { for (String p : t.onlinePlayers()) { b.suggest(p); } } return b.buildFuture(); }).executes(c -> {
+                  serverCommandFeedback(c, ServerCommands.send("ignore", StringArgumentType.getString(c, "player"), null, null));
+                  return 1;
+               })))
+            .then(ClientCommandManager.literal("lookup")
+               .then(ClientCommandManager.argument("player", StringArgumentType.word()).suggests((ctx, b) -> { AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class); if (t != null) { for (String p : t.onlinePlayers()) { b.suggest(p); } } return b.buildFuture(); }).executes(c -> {
+                  serverCommandFeedback(c, ServerCommands.send("lookup", StringArgumentType.getString(c, "player"), null, null));
+                  return 1;
+               })))
+            .then(ClientCommandManager.literal("protection")
+               .then(ClientCommandManager.literal("add").then(ClientCommandManager.argument("player", StringArgumentType.word()).suggests((ctx, b) -> { AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class); if (t != null) { for (String p : t.onlinePlayers()) { b.suggest(p); } } return b.buildFuture(); }).executes(c -> {
+                  serverCommandFeedback(c, ServerCommands.send("protection_add", StringArgumentType.getString(c, "player"), null, null));
+                  return 1;
+               })))
+               .then(ClientCommandManager.literal("remove").then(ClientCommandManager.argument("player", StringArgumentType.word()).suggests((ctx, b) -> { AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class); if (t != null) { for (String p : t.onlinePlayers()) { b.suggest(p); } } return b.buildFuture(); }).executes(c -> {
+                  serverCommandFeedback(c, ServerCommands.send("protection_remove", StringArgumentType.getString(c, "player"), null, null));
+                  return 1;
+               }))))
+            .then(ClientCommandManager.literal("trader")
+               .then(ClientCommandManager.literal("trust").then(ClientCommandManager.argument("player", StringArgumentType.word()).suggests((ctx, b) -> { AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class); if (t != null) { for (String p : t.onlinePlayers()) { b.suggest(p); } } return b.buildFuture(); }).executes(c -> {
+                  serverCommandFeedback(c, ServerCommands.send("trader_trust", StringArgumentType.getString(c, "player"), null, null));
+                  return 1;
+               })))
+               .then(ClientCommandManager.literal("untrust").then(ClientCommandManager.argument("player", StringArgumentType.word()).suggests((ctx, b) -> { AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class); if (t != null) { for (String p : t.onlinePlayers()) { b.suggest(p); } } return b.buildFuture(); }).executes(c -> {
+                  serverCommandFeedback(c, ServerCommands.send("trader_untrust", StringArgumentType.getString(c, "player"), null, null));
+                  return 1;
+               }))))
+            .then(ClientCommandManager.literal("tpaccept").executes(c -> {
+               serverCommandFeedback(c, ServerCommands.send("tpaccept", null, null, null));
+               return 1;
+            }))
+            .then(ClientCommandManager.literal("claimfly").executes(c -> {
+               serverCommandFeedback(c, ServerCommands.send("claimfly", null, null, null));
+               return 1;
+            }))
+            .then(ClientCommandManager.literal("enderchest").executes(c -> {
+               serverCommandFeedback(c, ServerCommands.send("enderchest", null, null, null));
+               return 1;
+            }))
+            .then(ClientCommandManager.literal("marry")
+               .then(ClientCommandManager.literal("kiss").executes(c -> {
+                  serverCommandFeedback(c, ServerCommands.send("marry_kiss", null, null, null));
+                  return 1;
+               }))
+               .then(ClientCommandManager.literal("home").executes(c -> {
+                  serverCommandFeedback(c, ServerCommands.send("marry_home", null, null, null));
+                  return 1;
+               }))
+               .then(ClientCommandManager.literal("tp").executes(c -> {
+                  serverCommandFeedback(c, ServerCommands.send("marry_tp", null, null, null));
+                  return 1;
+               }))));
+      });
+
+      ClientPlayConnectionEvents.JOIN.register((ClientPlayConnectionEvents.Join)(handler, sender, client) -> HudManager.onWorldJoin());
+      System.out.println("[KafkaUtils] Initialized — open the menu with X (rebind in Options → Controls).");
+   }
+
+   private static void serverCommandFeedback(CommandContext<FabricClientCommandSource> c, boolean sent) {
+      c.getSource().sendFeedback(class_2561.method_43470(sent
+         ? "§d[Kafka] §7Команда отправлена."
+         : "§d[Kafka] §cНе удалось отправить — нет подключения к серверу."));
+   }
+}

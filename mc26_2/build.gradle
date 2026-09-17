@@ -1,0 +1,85 @@
+// Minecraft 26.2 target. New — ships only the cross-version chat features for
+// now; the existing combat/render/economy modules stay 1.21.11-only until they
+// get their own 26.2 port. Versions below match CNDL_chat+'s working build,
+// which already ships for both 1.21.11 and 26.2.
+plugins {
+    // The plugins{} block only accepts a literal or a plain property
+    // placeholder here (no rootProject.xxx expressions) — this resolves
+    // because root gradle.properties values are visible on every project.
+    id 'net.fabricmc.fabric-loom' version "${loom_version_26_2}"
+}
+
+version = rootProject.mod_version
+group = rootProject.maven_group
+
+base {
+    archivesName = rootProject.archives_base_name
+}
+
+loom {
+    mods {
+        "kafkautils" {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven { url "https://maven.fabricmc.net/" }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${rootProject.minecraft_version_26_2}"
+    // 26.2 ships without the obfuscation layer that needs a separate mappings
+    // artifact, so there is no `mappings` dependency and no remap step (this
+    // mirrors CNDL_chat+'s mc26_2 target, which builds the same way).
+    // With remap disabled, Loom doesn't register mod-aware configurations
+    // (modImplementation etc.) at all — there is nothing to remap, so these
+    // are plain Gradle `implementation` dependencies, same as CNDL_chat+'s.
+    implementation "net.fabricmc:fabric-loader:${rootProject.loader_version_26_2}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${rootProject.fabric_version_26_2}"
+}
+
+sourceSets {
+    main {
+        java.srcDirs = [
+            rootProject.file('src/client/java'),
+            rootProject.file('src/targets/mc26_2/java')
+        ]
+        resources.srcDirs = [
+            rootProject.file('src/client/resources'),
+            rootProject.file('src/targets/mc26_2/resources')
+        ]
+    }
+}
+
+processResources {
+    inputs.property "version", project.version
+    inputs.property "minecraft_version", rootProject.minecraft_version_26_2
+    inputs.property "loader_version", rootProject.loader_version_26_2
+    filteringCharset "UTF-8"
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version,
+                "minecraft_version": rootProject.minecraft_version_26_2,
+                "loader_version": rootProject.loader_version_26_2
+    }
+}
+
+def targetJavaVersion = 25
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = targetJavaVersion
+    it.options.encoding = "UTF-8"
+}
+
+java {
+    withSourcesJar()
+
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
+tasks.named('jar') {
+    archiveFileName = "${rootProject.archives_base_name}-${rootProject.mod_version}-mc26.2.jar"
+}
