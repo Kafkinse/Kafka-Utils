@@ -5,10 +5,13 @@ import dev.kafka.kafkautils.chatplus.ChatAlertHud;
 import dev.kafka.kafkautils.chatplus.ChatAlertHudRegistration;
 import dev.kafka.kafkautils.chatplus.ChatPlusBootstrap;
 import dev.kafka.kafkautils.chatplus.ChatPlusScreen;
+import dev.kafka.kafkautils.chatplus.VnbxBridgeNetworking;
+import dev.kafka.kafkautils.chatplus.VnbxRelations;
 import dev.kafka.kafkautils.util.UpdateChecker;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -32,6 +35,7 @@ public final class KafkaUtilsClient implements ClientModInitializer {
    public void onInitializeClient() {
       ChatPlusBootstrap.init(() -> Minecraft.getInstance().getUser().getName());
       ChatAlertHudRegistration.register();
+      VnbxBridgeNetworking.register();
       UpdateChecker.start();
 
       KeyMapping.Category category = KeyMapping.Category.register(
@@ -57,6 +61,33 @@ public final class KafkaUtilsClient implements ClientModInitializer {
          }
       });
 
+      // Self-lookup on join is a deliberate smoke test: whether vanilla-box.ru's
+      // server actually answers the vnbx:bridge channel at all is unverified
+      // from here, so this prints one line either way — profile info if the
+      // bridge responded, an explicit "недоступен" if it didn't — instead of
+      // building a whole profile screen around an unconfirmed server feature.
+      ClientPlayConnectionEvents.JOIN.register((handler, sender, minecraft) -> {
+         VnbxBridgeNetworking.connected();
+         String myName = minecraft.getUser().getName();
+         VnbxBridgeNetworking.requestPlayerRelations(myName).thenAccept(relations ->
+               minecraft.execute(() -> reportRelations(minecraft, relations)));
+      });
+      ClientPlayConnectionEvents.DISCONNECT.register((handler, minecraft) -> VnbxBridgeNetworking.disconnected());
+
       LOGGER.info("Kafka Utils (26.2 target) loaded");
+   }
+
+   private static void reportRelations(Minecraft minecraft, VnbxRelations relations) {
+      String message;
+      if (!relations.available()) {
+         message = "§d[Kafka-Utils] §7vnbx:bridge недоступен на этом сервере — профиль через бридж не работает.";
+      } else {
+         String clan = relations.inClan()
+               ? "[" + relations.clanTag() + "] " + relations.clanName() + " (" + relations.clanRank() + ")"
+               : "не в клане";
+         String marriage = relations.married() ? "женат/замужем за " + relations.partnerName() : "не в браке";
+         message = "§d[Kafka-Utils] §7Профиль через bridge: §fклан §7— §f" + clan + " §7| брак §7— §f" + marriage;
+      }
+      minecraft.gui.hud.getChat().addClientSystemMessage(Component.literal(message));
    }
 }
