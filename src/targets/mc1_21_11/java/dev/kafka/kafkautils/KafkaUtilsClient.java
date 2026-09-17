@@ -2,6 +2,8 @@ package dev.kafka.kafkautils;
 
 import com.mojang.brigadier.LiteralMessage;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import dev.kafka.kafkautils.chatplus.ChatAlertHud;
+import dev.kafka.kafkautils.chatplus.ChatAlertHudRegistration;
 import dev.kafka.kafkautils.chatplus.ChatPlusBootstrap;
 import dev.kafka.kafkautils.chatplus.ChatPlusScreen;
 import dev.kafka.kafkautils.config.ConfigManager;
@@ -48,6 +50,8 @@ import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.minecraft.class_2561;
 import net.minecraft.class_304;
 import net.minecraft.class_310;
+import net.minecraft.class_3414;
+import net.minecraft.class_3417;
 import net.minecraft.class_3675;
 import net.minecraft.class_437;
 import net.minecraft.class_304.class_11900;
@@ -80,7 +84,8 @@ public class KafkaUtilsClient implements ClientModInitializer {
       potWheelKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.potion_wheel", class_307.field_1668, 86, class_11900.field_62556));
       pearlKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.quick_pearl", class_307.field_1668, 71, class_11900.field_62556));
       chatPlusKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.chat_plus", class_307.field_1668, 297, class_11900.field_62556));
-      ChatPlusBootstrap.init();
+      ChatPlusBootstrap.init(() -> class_310.method_1551().method_1548().method_1676());
+      ChatAlertHudRegistration.register();
 
       ClientTickEvents.END_CLIENT_TICK.register((ClientTickEvents.EndTick)(client) -> {
          class_3675.class_306 bound = KeyBindingHelper.getBoundKeyOf(openGuiKey);
@@ -155,6 +160,11 @@ public class KafkaUtilsClient implements ClientModInitializer {
          this.chatPlusKeyWasDown = cpDown;
          if (client.field_1724 != null && client.field_1687 != null) {
             ModuleManager.onTick();
+            ChatAlertHud.tick();
+            int chatAlertSounds = ChatAlertHud.drainPendingSounds();
+            for (int i = 0; i < chatAlertSounds; ++i) {
+               client.field_1724.method_5783((class_3414) class_3417.field_14622.comp_349(), 0.7F, 1.6F);
+            }
             if (BrewHelper.consumeOpen()) {
                client.method_1507(new PotionBrowserScreen());
             }
