@@ -3,7 +3,10 @@
 // get their own 26.2 port. Versions below match CNDL_chat+'s working build,
 // which already ships for both 1.21.11 and 26.2.
 plugins {
-    id 'net.fabricmc.fabric-loom' version "${rootProject.loom_version_26_2}"
+    // The plugins{} block only accepts a literal or a plain property
+    // placeholder here (no rootProject.xxx expressions) — this resolves
+    // because root gradle.properties values are visible on every project.
+    id 'net.fabricmc.fabric-loom' version "${loom_version_26_2}"
 }
 
 version = rootProject.mod_version
