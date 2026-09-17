@@ -216,7 +216,7 @@ public class ClickGuiScreen extends class_437 {
       String q = this.search != null ? this.search.method_1882().trim().toLowerCase(Locale.ROOT) : "";
       List<Module> mods = new ArrayList<>();
       for (Module m : ModuleManager.getByCategory(Category.values()[selectedCategory])) {
-         if (q.isEmpty() || m.getName().toLowerCase(Locale.ROOT).contains(q)) {
+         if (q.isEmpty() || RuLabels.of(m.getName()).toLowerCase(Locale.ROOT).contains(q)) {
             mods.add(m);
          }
       }
@@ -279,7 +279,7 @@ public class ClickGuiScreen extends class_437 {
       } else {
          caretDown(ctx, cvx, cvcy - 1, 3, MUTED);
       }
-      KFont.draw(ctx, this.field_22793, m.getName(), x + 24, y + 9, TEXT, false, true);
+      KFont.draw(ctx, this.field_22793, RuLabels.of(m.getName()), x + 24, y + 9, TEXT, false, true);
 
       if (isLauncher(m)) {
          int pw = KFont.width(this.field_22793, "Открыть", false) + 16;
@@ -314,7 +314,7 @@ public class ClickGuiScreen extends class_437 {
       if (y + 14 < contentTop || y > contentBottom) {
          return; // outside the scrolled viewport — don't draw or hit-test
       }
-      KFont.draw(ctx, this.field_22793, s.getName(), x, y + 4, MUTED, false, false);
+      KFont.draw(ctx, this.field_22793, RuLabels.of(s.getName()), x, y + 4, MUTED, false, false);
       int right = x + w;
       if (s instanceof BooleanSetting bs) {
          this.drawSwitch(ctx, right - 22, y + 2, bs.get());
@@ -383,7 +383,7 @@ public class ClickGuiScreen extends class_437 {
       fillRound(ctx, cx - ew / 2 - 12, cy - 44, ew + 24, 22, 8, CARD_HDR);
       String title = this.editList != null
          ? (this.editListIdx < 0 ? "Новая запись" : "Изменить запись")
-         : "Изменить: " + (this.editStr != null ? this.editStr.getName() : "");
+         : "Изменить: " + (this.editStr != null ? RuLabels.of(this.editStr.getName()) : "");
       KFont.draw(ctx, this.field_22793, title, cx - ew / 2 - 4, cy - 37, TEXT, false, true);
       fillRound(ctx, cx - ew / 2 - 6, cy - 10, ew + 12, 24, 5, WIN);
 
