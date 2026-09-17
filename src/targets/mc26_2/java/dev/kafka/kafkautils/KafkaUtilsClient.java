@@ -5,12 +5,14 @@ import dev.kafka.kafkautils.chatplus.ChatAlertHud;
 import dev.kafka.kafkautils.chatplus.ChatAlertHudRegistration;
 import dev.kafka.kafkautils.chatplus.ChatPlusBootstrap;
 import dev.kafka.kafkautils.chatplus.ChatPlusScreen;
+import dev.kafka.kafkautils.util.UpdateChecker;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
 import org.slf4j.Logger;
@@ -30,6 +32,7 @@ public final class KafkaUtilsClient implements ClientModInitializer {
    public void onInitializeClient() {
       ChatPlusBootstrap.init(() -> Minecraft.getInstance().getUser().getName());
       ChatAlertHudRegistration.register();
+      UpdateChecker.start();
 
       KeyMapping.Category category = KeyMapping.Category.register(
             Identifier.fromNamespaceAndPath(MOD_ID, "main"));
@@ -47,6 +50,10 @@ public final class KafkaUtilsClient implements ClientModInitializer {
          int chatAlertSounds = ChatAlertHud.drainPendingSounds();
          for (int i = 0; i < chatAlertSounds; ++i) {
             minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.PLAYER_LEVELUP, 1.0F, 0.75F));
+         }
+         if (minecraft.getConnection() != null) {
+            UpdateChecker.consumeAvailable().ifPresent(
+                  message -> minecraft.gui.hud.getChat().addClientSystemMessage(Component.literal(message)));
          }
       });
 

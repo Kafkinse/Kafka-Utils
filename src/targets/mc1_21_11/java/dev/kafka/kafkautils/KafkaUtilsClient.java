@@ -35,7 +35,9 @@ import dev.kafka.kafkautils.module.modules.combat.BrewHelper;
 import dev.kafka.kafkautils.module.modules.combat.EnchantHelper;
 import dev.kafka.kafkautils.module.modules.combat.FastSwap;
 import dev.kafka.kafkautils.module.modules.combat.QuickPearl;
+import dev.kafka.kafkautils.util.ChatUtil;
 import dev.kafka.kafkautils.util.Render3D;
+import dev.kafka.kafkautils.util.UpdateChecker;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
@@ -86,6 +88,7 @@ public class KafkaUtilsClient implements ClientModInitializer {
       chatPlusKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.chat_plus", class_307.field_1668, 297, class_11900.field_62556));
       ChatPlusBootstrap.init(() -> class_310.method_1551().method_1548().method_1676());
       ChatAlertHudRegistration.register();
+      UpdateChecker.start();
 
       ClientTickEvents.END_CLIENT_TICK.register((ClientTickEvents.EndTick)(client) -> {
          class_3675.class_306 bound = KeyBindingHelper.getBoundKeyOf(openGuiKey);
@@ -165,6 +168,7 @@ public class KafkaUtilsClient implements ClientModInitializer {
             for (int i = 0; i < chatAlertSounds; ++i) {
                client.field_1724.method_5783((class_3414) class_3417.field_14622.comp_349(), 0.7F, 1.6F);
             }
+            UpdateChecker.consumeAvailable().ifPresent(ChatUtil::raw);
             if (BrewHelper.consumeOpen()) {
                client.method_1507(new PotionBrowserScreen());
             }
