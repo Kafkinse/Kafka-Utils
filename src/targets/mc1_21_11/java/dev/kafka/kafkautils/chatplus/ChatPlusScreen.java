@@ -1,8 +1,10 @@
 package dev.kafka.kafkautils.chatplus;
 
+import dev.kafka.kafkautils.util.ChatUtil;
 import net.minecraft.class_11908;
 import net.minecraft.class_11909;
 import net.minecraft.class_2561;
+import net.minecraft.class_310;
 import net.minecraft.class_332;
 import net.minecraft.class_342;
 import net.minecraft.class_437;
@@ -36,10 +38,16 @@ public final class ChatPlusScreen extends class_437 {
    }
 
    public boolean method_25402(class_11909 click, boolean doubled) {
-      if (click.method_74245() == 0
-            && this.logic.mouseClicked(click.comp_4798(), click.comp_4799(), this.field_22789, this.field_22790)) {
+      int button = click.method_74245();
+      if ((button == 0 || button == 1)
+            && this.logic.mouseClicked(click.comp_4798(), click.comp_4799(), button, this.field_22789, this.field_22790)) {
          if (this.logic.closeRequested()) {
             this.method_25419();
+         }
+         String copyText = this.logic.consumeCopyRequest();
+         if (copyText != null) {
+            class_310.method_1551().field_1774.method_1455(copyText);
+            ChatUtil.info("§7скопировано в буфер обмена.");
          }
          return true;
       }

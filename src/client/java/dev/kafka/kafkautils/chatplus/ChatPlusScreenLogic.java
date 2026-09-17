@@ -43,6 +43,7 @@ public final class ChatPlusScreenLogic {
 
    private List<ChatEntry> visibleEntries = List.of();
    private int listTop;
+   private ChatEntry copyRequested;
 
    public void render(CompatGraphics g, int mouseX, int mouseY, int screenWidth, int screenHeight) {
       g.fill(0, 0, screenWidth, screenHeight, BG);
@@ -90,7 +91,8 @@ public final class ChatPlusScreenLogic {
             y += ROW_H;
          }
          if (maxScroll > 0) {
-            g.text("колесо — прокрутка (" + entries.size() + ")", screenWidth - 190, 12, MUTED);
+            g.text("колесо — прокрутка, ПКМ по строке — копировать (" + entries.size() + ")",
+                  screenWidth - 280, 12, MUTED);
          }
       }
 
@@ -108,7 +110,13 @@ public final class ChatPlusScreenLogic {
    }
 
    /** Returns true if the click hit something (the caller should treat it as consumed). */
-   public boolean mouseClicked(double mouseX, double mouseY, int screenWidth, int screenHeight) {
+   public boolean mouseClicked(double mouseX, double mouseY, int button, int screenWidth, int screenHeight) {
+      if (button == 1) {
+         return this.rightClicked(mouseY);
+      }
+      if (button != 0) {
+         return false;
+      }
       ChatTab[] tabs = ChatTab.values();
       for (int i = 0; i < tabs.length; ++i) {
          int x = tabX(i);
@@ -146,6 +154,26 @@ public final class ChatPlusScreenLogic {
          return true;
       }
       return false;
+   }
+
+   /** Right-click anywhere on a message row queues it for {@link #consumeCopyRequest()}. */
+   private boolean rightClicked(double mouseY) {
+      if (this.visibleEntries.isEmpty()) {
+         return false;
+      }
+      int index = (int) ((mouseY - this.listTop) / ROW_H);
+      if (index < 0 || index >= this.visibleEntries.size()) {
+         return false;
+      }
+      this.copyRequested = this.visibleEntries.get(index);
+      return true;
+   }
+
+   /** Text queued by a right-click, once; the caller should copy it to the clipboard. */
+   public String consumeCopyRequest() {
+      ChatEntry entry = this.copyRequested;
+      this.copyRequested = null;
+      return entry == null ? null : entry.text();
    }
 
    public void mouseScrolled(double amount) {

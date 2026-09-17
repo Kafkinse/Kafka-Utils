@@ -1,5 +1,6 @@
 package dev.kafka.kafkautils.chatplus;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
@@ -38,9 +39,17 @@ public final class ChatPlusScreen extends Screen {
 
    @Override
    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-      if (event.button() == 0 && this.logic.mouseClicked(event.x(), event.y(), this.width, this.height)) {
+      int button = event.button();
+      if ((button == 0 || button == 1)
+            && this.logic.mouseClicked(event.x(), event.y(), button, this.width, this.height)) {
          if (this.logic.closeRequested()) {
             this.onClose();
+         }
+         String copyText = this.logic.consumeCopyRequest();
+         if (copyText != null) {
+            Minecraft.getInstance().keyboardHandler.setClipboard(copyText);
+            Minecraft.getInstance().gui.hud.getChat()
+                  .addClientSystemMessage(Component.literal("§7скопировано в буфер обмена."));
          }
          return true;
       }
