@@ -2,6 +2,7 @@ package dev.kafka.kafkautils;
 
 import com.mojang.brigadier.LiteralMessage;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.context.CommandContext;
 import dev.kafka.kafkautils.chatplus.ChatAlertHud;
 import dev.kafka.kafkautils.chatplus.ChatAlertHudRegistration;
 import dev.kafka.kafkautils.chatplus.ChatPlusBootstrap;
@@ -37,6 +38,7 @@ import dev.kafka.kafkautils.module.modules.combat.FastSwap;
 import dev.kafka.kafkautils.module.modules.combat.QuickPearl;
 import dev.kafka.kafkautils.util.ChatUtil;
 import dev.kafka.kafkautils.util.Render3D;
+import dev.kafka.kafkautils.util.ServerCommands;
 import dev.kafka.kafkautils.util.UpdateChecker;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
@@ -473,10 +475,95 @@ public class KafkaUtilsClient implements ClientModInitializer {
                   e.reset();
                }
                return 1;
-            }))));
+            })))
+            .then(ClientCommandManager.literal("pay")
+               .then(ClientCommandManager.argument("player", StringArgumentType.word()).suggests((ctx, b) -> { AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class); if (t != null) { for (String p : t.onlinePlayers()) { b.suggest(p); } } return b.buildFuture(); })
+               .then(ClientCommandManager.argument("amount", StringArgumentType.word()).executes(c -> {
+                  serverCommandFeedback(c, ServerCommands.send("pay", StringArgumentType.getString(c, "player"),
+                     StringArgumentType.getString(c, "amount"), null));
+                  return 1;
+               }))))
+            .then(ClientCommandManager.literal("msg")
+               .then(ClientCommandManager.argument("player", StringArgumentType.word()).suggests((ctx, b) -> { AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class); if (t != null) { for (String p : t.onlinePlayers()) { b.suggest(p); } } return b.buildFuture(); })
+               .then(ClientCommandManager.argument("message", StringArgumentType.greedyString()).executes(c -> {
+                  serverCommandFeedback(c, ServerCommands.send("msg", StringArgumentType.getString(c, "player"),
+                     null, StringArgumentType.getString(c, "message")));
+                  return 1;
+               }))))
+            .then(ClientCommandManager.literal("mail")
+               .then(ClientCommandManager.argument("player", StringArgumentType.word()).suggests((ctx, b) -> { AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class); if (t != null) { for (String p : t.onlinePlayers()) { b.suggest(p); } } return b.buildFuture(); })
+               .then(ClientCommandManager.argument("message", StringArgumentType.greedyString()).executes(c -> {
+                  serverCommandFeedback(c, ServerCommands.send("mail", StringArgumentType.getString(c, "player"),
+                     null, StringArgumentType.getString(c, "message")));
+                  return 1;
+               }))))
+            .then(ClientCommandManager.literal("call")
+               .then(ClientCommandManager.argument("player", StringArgumentType.word()).suggests((ctx, b) -> { AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class); if (t != null) { for (String p : t.onlinePlayers()) { b.suggest(p); } } return b.buildFuture(); }).executes(c -> {
+                  serverCommandFeedback(c, ServerCommands.send("call", StringArgumentType.getString(c, "player"), null, null));
+                  return 1;
+               })))
+            .then(ClientCommandManager.literal("ignore")
+               .then(ClientCommandManager.argument("player", StringArgumentType.word()).suggests((ctx, b) -> { AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class); if (t != null) { for (String p : t.onlinePlayers()) { b.suggest(p); } } return b.buildFuture(); }).executes(c -> {
+                  serverCommandFeedback(c, ServerCommands.send("ignore", StringArgumentType.getString(c, "player"), null, null));
+                  return 1;
+               })))
+            .then(ClientCommandManager.literal("lookup")
+               .then(ClientCommandManager.argument("player", StringArgumentType.word()).suggests((ctx, b) -> { AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class); if (t != null) { for (String p : t.onlinePlayers()) { b.suggest(p); } } return b.buildFuture(); }).executes(c -> {
+                  serverCommandFeedback(c, ServerCommands.send("lookup", StringArgumentType.getString(c, "player"), null, null));
+                  return 1;
+               })))
+            .then(ClientCommandManager.literal("protection")
+               .then(ClientCommandManager.literal("add").then(ClientCommandManager.argument("player", StringArgumentType.word()).suggests((ctx, b) -> { AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class); if (t != null) { for (String p : t.onlinePlayers()) { b.suggest(p); } } return b.buildFuture(); }).executes(c -> {
+                  serverCommandFeedback(c, ServerCommands.send("protection_add", StringArgumentType.getString(c, "player"), null, null));
+                  return 1;
+               })))
+               .then(ClientCommandManager.literal("remove").then(ClientCommandManager.argument("player", StringArgumentType.word()).suggests((ctx, b) -> { AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class); if (t != null) { for (String p : t.onlinePlayers()) { b.suggest(p); } } return b.buildFuture(); }).executes(c -> {
+                  serverCommandFeedback(c, ServerCommands.send("protection_remove", StringArgumentType.getString(c, "player"), null, null));
+                  return 1;
+               }))))
+            .then(ClientCommandManager.literal("trader")
+               .then(ClientCommandManager.literal("trust").then(ClientCommandManager.argument("player", StringArgumentType.word()).suggests((ctx, b) -> { AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class); if (t != null) { for (String p : t.onlinePlayers()) { b.suggest(p); } } return b.buildFuture(); }).executes(c -> {
+                  serverCommandFeedback(c, ServerCommands.send("trader_trust", StringArgumentType.getString(c, "player"), null, null));
+                  return 1;
+               })))
+               .then(ClientCommandManager.literal("untrust").then(ClientCommandManager.argument("player", StringArgumentType.word()).suggests((ctx, b) -> { AutoTeleport t = (AutoTeleport)ModuleManager.get(AutoTeleport.class); if (t != null) { for (String p : t.onlinePlayers()) { b.suggest(p); } } return b.buildFuture(); }).executes(c -> {
+                  serverCommandFeedback(c, ServerCommands.send("trader_untrust", StringArgumentType.getString(c, "player"), null, null));
+                  return 1;
+               }))))
+            .then(ClientCommandManager.literal("tpaccept").executes(c -> {
+               serverCommandFeedback(c, ServerCommands.send("tpaccept", null, null, null));
+               return 1;
+            }))
+            .then(ClientCommandManager.literal("claimfly").executes(c -> {
+               serverCommandFeedback(c, ServerCommands.send("claimfly", null, null, null));
+               return 1;
+            }))
+            .then(ClientCommandManager.literal("enderchest").executes(c -> {
+               serverCommandFeedback(c, ServerCommands.send("enderchest", null, null, null));
+               return 1;
+            }))
+            .then(ClientCommandManager.literal("marry")
+               .then(ClientCommandManager.literal("kiss").executes(c -> {
+                  serverCommandFeedback(c, ServerCommands.send("marry_kiss", null, null, null));
+                  return 1;
+               }))
+               .then(ClientCommandManager.literal("home").executes(c -> {
+                  serverCommandFeedback(c, ServerCommands.send("marry_home", null, null, null));
+                  return 1;
+               }))
+               .then(ClientCommandManager.literal("tp").executes(c -> {
+                  serverCommandFeedback(c, ServerCommands.send("marry_tp", null, null, null));
+                  return 1;
+               }))));
       });
 
       ClientPlayConnectionEvents.JOIN.register((ClientPlayConnectionEvents.Join)(handler, sender, client) -> HudManager.onWorldJoin());
       System.out.println("[KafkaUtils] Initialized — open the menu with X (rebind in Options → Controls).");
+   }
+
+   private static void serverCommandFeedback(CommandContext<FabricClientCommandSource> c, boolean sent) {
+      c.getSource().sendFeedback(class_2561.method_43470(sent
+         ? "§d[Kafka] §7Команда отправлена."
+         : "§d[Kafka] §cНе удалось отправить — нет подключения к серверу."));
    }
 }
