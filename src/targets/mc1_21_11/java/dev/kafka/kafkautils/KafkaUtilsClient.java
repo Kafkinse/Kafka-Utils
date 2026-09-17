@@ -2,6 +2,8 @@ package dev.kafka.kafkautils;
 
 import com.mojang.brigadier.LiteralMessage;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import dev.kafka.kafkautils.chatplus.ChatPlusBootstrap;
+import dev.kafka.kafkautils.chatplus.ChatPlusScreen;
 import dev.kafka.kafkautils.config.ConfigManager;
 import dev.kafka.kafkautils.gui.AutoTeleportScreen;
 import dev.kafka.kafkautils.gui.ClickGuiScreen;
@@ -65,6 +67,8 @@ public class KafkaUtilsClient implements ClientModInitializer {
    private boolean potWheelWasDown = false;
    private static class_304 pearlKey;
    private boolean pearlKeyWasDown = false;
+   private static class_304 chatPlusKey;
+   private boolean chatPlusKeyWasDown = false;
 
    public void onInitializeClient() {
       ModuleManager.init();
@@ -75,6 +79,8 @@ public class KafkaUtilsClient implements ClientModInitializer {
       throwPotKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.throw_potion", class_307.field_1668, 82, class_11900.field_62556));
       potWheelKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.potion_wheel", class_307.field_1668, 86, class_11900.field_62556));
       pearlKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.quick_pearl", class_307.field_1668, 71, class_11900.field_62556));
+      chatPlusKey = KeyBindingHelper.registerKeyBinding(new class_304("key.kafkautils.chat_plus", class_307.field_1668, 297, class_11900.field_62556));
+      ChatPlusBootstrap.init();
 
       ClientTickEvents.END_CLIENT_TICK.register((ClientTickEvents.EndTick)(client) -> {
          class_3675.class_306 bound = KeyBindingHelper.getBoundKeyOf(openGuiKey);
@@ -140,6 +146,13 @@ public class KafkaUtilsClient implements ClientModInitializer {
          }
 
          this.pearlKeyWasDown = pDown;
+         class_3675.class_306 cpk = KeyBindingHelper.getBoundKeyOf(chatPlusKey);
+         boolean cpDown = cpk.method_1442() == class_307.field_1668 && cpk.method_1444() != -1 && client.method_22683() != null && class_3675.method_15987(client.method_22683(), cpk.method_1444());
+         if (cpDown && !this.chatPlusKeyWasDown && client.field_1755 == null) {
+            client.method_1507(new ChatPlusScreen());
+         }
+
+         this.chatPlusKeyWasDown = cpDown;
          if (client.field_1724 != null && client.field_1687 != null) {
             ModuleManager.onTick();
             if (BrewHelper.consumeOpen()) {
