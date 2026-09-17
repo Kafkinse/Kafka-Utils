@@ -1,6 +1,7 @@
 package dev.kafka.kafkautils.chatplus;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -18,6 +19,15 @@ public final class ChatPlusScreen extends Screen {
 
    public ChatPlusScreen() {
       super(Component.literal("Kafka Chat+"));
+   }
+
+   @Override
+   protected void init() {
+      int w = 150;
+      EditBox search = new EditBox(this.font, this.width - w - 10, 6, w, 16, Component.literal("поиск"));
+      search.setHint(Component.literal("поиск по чату…"));
+      search.setResponder(value -> this.logic.setSearchQuery(value));
+      this.addRenderableWidget(search);
    }
 
    @Override
